@@ -350,8 +350,29 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         <?php foreach ($messages as $m) : ?>
                             <?php if ($m['sender_id'] == $_SESSION['user']['id']) : ?>
                                 <!-- Sent Message -->
-                                <div class="flex items-start gap-2 md:gap-3 justify-end">
-                                    <div class="max-w-[75%] md:max-w-md">
+                                <div class="flex items-start gap-2 md:gap-3 justify-end message-group" data-message-id="<?= $m['id'] ?>">
+                                    <div class="max-w-[75%] md:max-w-md relative">
+                                        <!-- Three dots button -->
+                                        <button onclick="toggleMessageMenu(event, <?= $m['id'] ?>)" class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu -->
+                                        <div id="messageMenu-<?= $m['id'] ?>" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="editMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-edit text-blue-400"></i>
+                                                <span>Tahrirlash</span>
+                                            </button>
+                                            <button onclick="copyMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i>
+                                                <span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i>
+                                                <span>O'chirish</span>
+                                            </button>
+                                        </div>
+
                                         <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
                                             <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
                                         </div>
@@ -363,14 +384,32 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 </div>
                             <?php else : ?>
                                 <!-- Received Message -->
-                                <div class="flex items-start gap-2 md:gap-3">
+                                <div class="flex items-start gap-2 md:gap-3 message-group" data-message-id="<?= $m['id'] ?>">
                                     <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                                         <span class="text-xs font-bold text-white"><?= $receiverInitials ?></span>
                                     </div>
-                                    <div class="max-w-[75%] md:max-w-md">
+                                    <div class="max-w-[75%] md:max-w-md relative">
                                         <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
                                             <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
                                         </div>
+
+                                        <!-- Three dots button -->
+                                        <button onclick="toggleMessageMenu(event, <?= $m['id'] ?>)" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu -->
+                                        <div id="messageMenu-<?= $m['id'] ?>" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="copyMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i>
+                                                <span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i>
+                                                <span>O'chirish</span>
+                                            </button>
+                                        </div>
+
                                         <p class="text-[10px] text-gray-500 mt-1 ml-1">
                                             <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
                                         </p>
@@ -382,17 +421,19 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <!-- Message Input -->
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
-                        <form id="messageForm" class="flex items-end gap-2 md:gap-3">
+                        <form class="flex items-end gap-2 md:gap-3" action="send-message.php" method="POST">
                             <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
                                 <i class="fas fa-paperclip text-gray-400"></i>
                             </button>
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                            <input type="hidden" name="receiver_id" value="<?= htmlspecialchars($_SESSION['receiver']['id']) ?>">
                             <div class="flex-1 relative">
                                 <textarea
                                     rows="1"
                                     placeholder="Xabar yozing..."
                                     class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
                                     style="min-height: 46px; max-height: 120px;"
-                                    id="messageInput"></textarea>
+                                    id="messageInput" name="message"></textarea>
                                 <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 flex items-center justify-center transition-all shadow-lg hover:shadow-blue-500/25">
                                     <i class="fas fa-paper-plane text-white text-xs"></i>
                                 </button>
@@ -436,6 +477,71 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     </form>
 
     <script>
+        // Toggle message menu
+        function toggleMessageMenu(event, messageId) {
+            event.stopPropagation();
+
+            // Close all other dropdowns
+            document.querySelectorAll('.message-dropdown').forEach(dropdown => {
+                if (dropdown.id !== `messageMenu-${messageId}`) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            // Toggle current dropdown
+            const dropdown = document.getElementById(`messageMenu-${messageId}`);
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.message-menu-btn') && !event.target.closest('.message-dropdown')) {
+                document.querySelectorAll('.message-dropdown').forEach(dropdown => {
+                    dropdown.classList.add('hidden');
+                });
+            }
+        });
+
+        // Hover effect for message groups
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageGroups = document.querySelectorAll('.message-group');
+
+            messageGroups.forEach(group => {
+                group.addEventListener('mouseenter', function() {
+                    const menuBtn = this.querySelector('.message-menu-btn');
+                    if (menuBtn) {
+                        menuBtn.style.opacity = '1';
+                    }
+                });
+
+                group.addEventListener('mouseleave', function() {
+                    const menuBtn = this.querySelector('.message-menu-btn');
+                    if (menuBtn) {
+                        menuBtn.style.opacity = '0';
+                    }
+                });
+            });
+        });
+
+        // Example functions (siz to'ldirasiz)
+        function editMessage(messageId) {
+            document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
+            console.log('Edit message:', messageId);
+            // Sizning kodingiz...
+        }
+
+        function copyMessage(messageId) {
+            document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
+            console.log('Copy message:', messageId);
+            // Sizning kodingiz...
+        }
+
+        function deleteMessage(messageId) {
+            document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
+            console.log('Delete message:', messageId);
+            // Sizning kodingiz...
+        }
+        
         // Toggle sidebar for mobile
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -468,23 +574,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            });
-        }
-
-        // Handle message form submission
-        const messageForm = document.getElementById('messageForm');
-        if (messageForm) {
-            messageForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const messageInput = document.getElementById('messageInput');
-                const message = messageInput.value.trim();
-
-                if (message) {
-                    // Add your message sending logic here
-                    console.log('Sending message:', message);
-                    messageInput.value = '';
-                    messageInput.style.height = '46px';
-                }
             });
         }
 
