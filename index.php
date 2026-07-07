@@ -36,6 +36,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SocialChat - Muloqot</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
@@ -421,7 +422,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <!-- Message Input -->
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
-                        <form class="flex items-end gap-2 md:gap-3" action="send-message.php" method="POST">
+                        <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST">
                             <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
                                 <i class="fas fa-paperclip text-gray-400"></i>
                             </button>
@@ -538,10 +539,34 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-            console.log('Delete message:', messageId);
-            // Sizning kodingiz...
+
+            // FormData yaratish
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            // CSRF tokenni to'g'ridan-to'g'ri PHP'dan olish
+            formData.append('csrf_token', '<?php echo $_SESSION["csrf_token"]; ?>');
+
+            fetch('delete_message.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+                        if (messageGroup) {
+                            messageGroup.remove();
+                        }
+                    } else {
+                        alert(data.message || 'Xatolik yuz berdi.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Delete message error:', error);
+                    alert('Xatolik yuz berdi.');
+                });
         }
-        
+
         // Toggle sidebar for mobile
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
