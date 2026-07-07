@@ -21,6 +21,7 @@ CREATE TABLE messages (
     sender_id INT NOT NULL,
     receiver_id INT NOT NULL,
     message TEXT NOT NULL,
+    status ENUM('sent', 'read') DEFAULT 'sent',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
@@ -29,17 +30,18 @@ CREATE TABLE messages (
 -- INSERTING USERS
 INSERT INTO users (name, email, password) VALUES 
 ('Iqbolshoh Ilhomjonov', 'iilhomjonov777@gmail.com', '$2y$10$FK1CG7WYwBbjC/rNTscuGOuH05Jqs.fxLxYB0rZ..Y1keEoDiEQMu'),
-('Simple User', 'user@iqbolshoh.uz',  '$2y$10$FK1CG7WYwBbjC/rNTscuGOuH05Jqs.fxLxYB0rZ..Y1keEoDiEQMu');
+('Simple User', 'user@iqbolshoh.uz',  '$2y$10$FK1CG7WYwBbjC/rNTscuGOuH05Jqs.fxLxYB0rZ..Y1keEoDiEQMu'),
+('John Doe', 'john@iqbolshoh.uz', '$2y$10$FK1CG7WYwBbjC/rNTscuGOuH05Jqs.fxLxYB0rZ..Y1keEoDiEQMu');
 
 INSERT INTO messages (sender_id, receiver_id, message) VALUES 
-(1, 2, 'Hello! How are you?'),
+(1, 2, 'Hello, how are you?'),
 (2, 1, 'I am good, thank you! How about you?'),
 (1, 2, 'I am doing well too. What are you up to today?'),
 (2, 1, 'Just working on some projects. You?'),
-(1, 2, 'Same here. Just trying to finish up some tasks.'),
-(2, 1, 'Good luck with that! Let me know if you need any help.'),
-(1, 2, 'Thanks! I appreciate it.'),
-(2, 1, 'No problem! Always happy to help.'),
-(1, 2, 'By the way, have you seen the latest updates on our project?'),
-(2, 1, 'Yes! I think they look great. We should discuss them in our next meeting.');
+(1, 3, 'Hey John, long time no see!'),
+(3, 1, 'Hey! Yeah, it has been a while. How have you been?'),
+(1, 3, 'I have been good. Just busy with work.'),
+(3, 1, 'I understand. We should catch up sometime soon.'),
+(2, 3, 'Hi John! How are you doing?'),
+(3, 2, 'Hi! I am doing well. How about you?');
 

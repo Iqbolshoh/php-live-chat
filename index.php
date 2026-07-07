@@ -15,7 +15,17 @@ if (empty($_SESSION['csrf_token'])) {
 include 'db.php';
 $db = new Database();
 
-echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
+$contacts = $db->select('users', '*', 'id != ?', [$_SESSION['user']['id']]);
+
+if (isset($_GET['id']) && !empty($_GET['id'])) {
+    $messages = $db->select('messages', '*', '(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)', [$_SESSION['user']['id'], $_GET['id'], $_GET['id'], $_SESSION['user']['id']]);
+    $_SESSION['receiver']['id'] = $_GET['id'];
+    $_SESSION['receiver']['name'] = $db->select('users', 'name', 'id = ?', [$_GET['id']])[0]['name'];
+} else {
+    $messages = [];
+    $_SESSION['receiver']['id'] = null;
+    $_SESSION['receiver']['name'] = null;
+}
 ?>
 
 <!DOCTYPE html>
@@ -108,7 +118,19 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
         }
 
         .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 40;
+            opacity: 0;
+            pointer-events: none;
             transition: opacity 0.3s ease-in-out;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .sidebar-panel {
@@ -172,21 +194,6 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
             .sidebar-panel.active {
                 transform: translateX(0);
             }
-
-            .sidebar-overlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.6);
-                backdrop-filter: blur(4px);
-                z-index: 40;
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            .sidebar-overlay.active {
-                opacity: 1;
-                pointer-events: auto;
-            }
         }
     </style>
 </head>
@@ -222,7 +229,7 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
     <div class="flex h-screen p-3 md:p-4 gap-3 md:gap-4">
 
         <!-- Sidebar - Users List -->
-        <div class="sidebar-panel glass-panel rounded-2xl md:rounded-3xl flex flex-col flex-shrink-0 shadow-2xl" id="sidebar">
+        <div class="sidebar-panel glass-panel rounded-2xl md:rounded-3xl flex flex-col flex-shrink-0 shadow-2xl md:relative md:transform-none" id="sidebar">
             <!-- Sidebar Header -->
             <div class="p-4 md:p-5 border-b border-gray-700/30">
                 <div class="flex items-center justify-between mb-4">
@@ -248,84 +255,31 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
 
             <!-- Users List -->
             <div class="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-3 space-y-1">
+                <!-- Contacts -->
+                <?php foreach ($contacts as $contact) : ?>
+                    <?php
+                    $nameParts = explode(' ', trim($contact['name']));
+                    $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
+                    $safeName = htmlspecialchars($contact['name'], ENT_QUOTES, 'UTF-8');
+                    $userId = $contact['id'];
+                    $isActive = (isset($_GET['id']) && $_GET['id'] == $userId) ? 'active' : '';
+                    ?>
 
-                <!-- User 1 -->
-                <div class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer active" onclick="openChat('Iqbolshoh Ilhomjonov', 'II', 'online')">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                            <span class="font-bold text-white">II</span>
+                    <a href="?id=<?= $userId ?>" class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer block hover:no-underline <?= $isActive ?>">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                <span class="font-bold text-white"><?= $initials ?></span>
+                            </div>
+                            <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
                         </div>
-                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-0.5">
-                            <p class="font-semibold text-sm truncate">Iqbolshoh Ilhomjonov</p>
-                            <span class="text-[10px] text-gray-500">10:35</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <p class="font-semibold text-sm truncate"><?= $safeName ?></p>
+                            </div>
+                            <p class="text-xs text-gray-400">Onlayn</p>
                         </div>
-                        <div class="flex items-center justify-between">
-                            <p class="text-xs text-gray-400 truncate">Telefon daftar versiyasi...</p>
-                            <span class="bg-blue-600 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">3</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- User 2 -->
-                <div class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer" onclick="openChat('Simple User', 'SU', 'offline')">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                            <span class="font-bold text-white">SU</span>
-                        </div>
-                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-gray-500 rounded-full border-2 border-slate-800"></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-0.5">
-                            <p class="font-semibold text-sm truncate">Simple User</p>
-                            <span class="text-[10px] text-gray-500">09:20</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <p class="text-xs text-gray-400 truncate">Rahmat! 😊</p>
-                            <span class="bg-blue-600 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">2</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- User 3 -->
-                <div class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer" onclick="openChat('Admin User', 'AD', 'online')">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                            <span class="font-bold text-white">AD</span>
-                        </div>
-                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-0.5">
-                            <p class="font-semibold text-sm truncate">Admin User</p>
-                            <span class="text-[10px] text-gray-500">Kecha</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <p class="text-xs text-gray-400 truncate">Yordam kerakmi?</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- User 4 -->
-                <div class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer" onclick="openChat('John Doe', 'JD', 'offline')">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg">
-                            <span class="font-bold text-white">JD</span>
-                        </div>
-                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-gray-500 rounded-full border-2 border-slate-800"></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-0.5">
-                            <p class="font-semibold text-sm truncate">John Doe</p>
-                            <span class="text-[10px] text-gray-500">Dush</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <p class="text-xs text-gray-400 truncate">Yaxshi, rahmat!</p>
-                        </div>
-                    </div>
-                </div>
+                    </a>
+                <?php endforeach; ?>
             </div>
 
             <!-- Sidebar Footer -->
@@ -333,12 +287,12 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center">
                         <span class="font-bold text-white text-sm">
-                            <?php echo isset($_SESSION['username']) ? strtoupper(substr($_SESSION['username'], 0, 2)) : 'ME'; ?>
+                            <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
                         </span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="font-semibold text-sm truncate">
-                            <?php echo isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'User'; ?>
+                            <?php echo isset($_SESSION['user']['email']) ? htmlspecialchars($_SESSION['user']['email']) : 'User'; ?>
                         </p>
                         <p class="text-xs text-gray-400">Mening profilim</p>
                     </div>
@@ -351,140 +305,128 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
 
         <!-- Main Chat Area -->
         <div class="flex-1 flex flex-col">
-
-            <!-- Empty State (when no chat is open) -->
-            <div class="glass-panel rounded-2xl md:rounded-3xl flex-1 flex items-center justify-center shadow-2xl empty-state" id="emptyState">
-                <div class="text-center px-6">
-                    <div class="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
-                        <i class="fas fa-comments text-4xl md:text-5xl text-white"></i>
-                    </div>
-                    <h2 class="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                        SocialChat'ga xush kelibsiz!
-                    </h2>
-                    <p class="text-gray-400 text-sm md:text-base mb-6 max-w-md">
-                        Muloqotni boshlash uchun chap tomondan suhbatdosh tanlang
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <button class="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105" onclick="toggleSidebar()">
-                            <i class="fas fa-users mr-2"></i> Kontaktlar
-                        </button>
-                        <button onclick="openLogoutModal()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-sign-out-alt"></i> Chiqish
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat Window (hidden by default) -->
-            <div class="glass-panel rounded-2xl md:rounded-3xl flex-col h-full shadow-2xl chat-window hidden" id="chatWindow">
-
-                <!-- Chat Header -->
-                <div class="p-3 md:p-4 border-b border-gray-700/30 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <button class="md:hidden w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center flex-shrink-0 transition-colors" onclick="toggleSidebar()">
-                            <i class="fas fa-arrow-left text-gray-400"></i>
-                        </button>
-                        <button class="hidden md:flex w-10 h-10 rounded-xl hover:bg-white/10 items-center justify-center flex-shrink-0 transition-colors" onclick="closeChat()">
-                            <i class="fas fa-arrow-left text-gray-400"></i>
-                        </button>
-
-                        <div class="relative flex-shrink-0">
-                            <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg" id="chatAvatar">
-                                <span class="font-bold text-white text-sm">II</span>
+            <?php if (isset($_GET['id']) && !empty($_GET['id'])): ?>
+                <!-- Chat Window -->
+                <div class="glass-panel rounded-2xl md:rounded-3xl flex flex-col h-full shadow-2xl chat-window">
+                    <!-- Chat Header -->
+                    <div class="p-3 md:p-4 border-b border-gray-700/30 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <button class="md:hidden w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center flex-shrink-0 transition-colors" onclick="toggleSidebar()">
+                                <i class="fas fa-bars text-gray-400"></i>
+                            </button>
+                            <button class="hidden md:flex w-10 h-10 rounded-xl hover:bg-white/10 items-center justify-center flex-shrink-0 transition-colors" onclick="closeChat()">
+                                <i class="fas fa-arrow-left text-gray-400"></i>
+                            </button>
+                            <div class="relative flex-shrink-0">
+                                <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                                    <?php
+                                    $receiverNameParts = explode(' ', trim($_SESSION['receiver']['name']));
+                                    $receiverInitials = strtoupper(substr($receiverNameParts[0], 0, 1) . (isset($receiverNameParts[1]) ? substr($receiverNameParts[1], 0, 1) : ''));
+                                    ?>
+                                    <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
+                                </div>
+                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
                             </div>
-                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot" id="chatStatus"></span>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-sm md:text-base" id="chatName">Iqbolshoh Ilhomjonov</h3>
-                            <p class="text-xs" id="chatOnlineStatus">
-                                <span class="text-green-400">● Onlayn</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div class="flex gap-1 md:gap-2">
-                        <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors">
-                            <i class="fas fa-phone text-gray-400"></i>
-                        </button>
-                        <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors hidden sm:flex">
-                            <i class="fas fa-video text-gray-400"></i>
-                        </button>
-                        <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
-                            <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Messages Container -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
-                    <!-- Received Message -->
-                    <div class="flex items-start gap-2 md:gap-3">
-                        <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="text-xs font-bold text-white">II</span>
-                        </div>
-                        <div class="max-w-[75%] md:max-w-md">
-                            <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                <p class="text-sm">Assalomu alaykum! Mahsulotingiz haqida ma'lumot olmoqchi edim.</p>
+                            <div>
+                                <h3 class="font-bold text-sm md:text-base"><?= htmlspecialchars($_SESSION['receiver']['name']) ?></h3>
+                                <p class="text-xs text-green-400">● Onlayn</p>
                             </div>
-                            <p class="text-[10px] text-gray-500 mt-1 ml-1">10:30</p>
                         </div>
-                    </div>
-
-                    <!-- Sent Message -->
-                    <div class="flex items-start gap-2 md:gap-3 justify-end">
-                        <div class="max-w-[75%] md:max-w-md">
-                            <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                                <p class="text-sm">Va alaykum assalom! Albatta, qaysi mahsulot haqida qiziqyapsiz?</p>
-                            </div>
-                            <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                                10:32 <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Date Separator -->
-                    <div class="flex items-center gap-3 my-4">
-                        <div class="flex-1 h-px bg-gray-700/30"></div>
-                        <span class="text-[10px] text-gray-500 bg-slate-800/50 px-3 py-1 rounded-full">Bugun</span>
-                        <div class="flex-1 h-px bg-gray-700/30"></div>
-                    </div>
-
-                    <!-- Received Message -->
-                    <div class="flex items-start gap-2 md:gap-3">
-                        <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="text-xs font-bold text-white">II</span>
-                        </div>
-                        <div class="max-w-[75%] md:max-w-md">
-                            <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                <p class="text-sm">Telefon daftar versiyasi borligini eshitdim. Narxi va xususiyatlari qanday?</p>
-                            </div>
-                            <p class="text-[10px] text-gray-500 mt-1 ml-1">10:33</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Message Input -->
-                <div class="p-3 md:p-4 border-t border-gray-700/30">
-                    <div class="flex items-end gap-2 md:gap-3">
-                        <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
-                            <i class="fas fa-paperclip text-gray-400"></i>
-                        </button>
-                        <div class="flex-1 relative">
-                            <textarea
-                                rows="1"
-                                placeholder="Xabar yozing..."
-                                class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
-                                style="min-height: 46px; max-height: 120px;"
-                                id="messageInput"></textarea>
-                            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 flex items-center justify-center transition-all shadow-lg hover:shadow-blue-500/25">
-                                <i class="fas fa-paper-plane text-white text-xs"></i>
+                        <div class="flex gap-1 md:gap-2">
+                            <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors">
+                                <i class="fas fa-phone text-gray-400"></i>
+                            </button>
+                            <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors hidden sm:flex">
+                                <i class="fas fa-video text-gray-400"></i>
+                            </button>
+                            <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
+                                <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                             </button>
                         </div>
-                        <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0 hidden sm:flex">
-                            <i class="fas fa-smile text-gray-400"></i>
-                        </button>
+                    </div>
+
+                    <!-- Messages Container -->
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
+                        <?php foreach ($messages as $m) : ?>
+                            <?php if ($m['sender_id'] == $_SESSION['user']['id']) : ?>
+                                <!-- Sent Message -->
+                                <div class="flex items-start gap-2 md:gap-3 justify-end">
+                                    <div class="max-w-[75%] md:max-w-md">
+                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
+                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
+                                            <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php else : ?>
+                                <!-- Received Message -->
+                                <div class="flex items-start gap-2 md:gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs font-bold text-white"><?= $receiverInitials ?></span>
+                                    </div>
+                                    <div class="max-w-[75%] md:max-w-md">
+                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">
+                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- Message Input -->
+                    <div class="p-3 md:p-4 border-t border-gray-700/30">
+                        <form id="messageForm" class="flex items-end gap-2 md:gap-3">
+                            <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
+                                <i class="fas fa-paperclip text-gray-400"></i>
+                            </button>
+                            <div class="flex-1 relative">
+                                <textarea
+                                    rows="1"
+                                    placeholder="Xabar yozing..."
+                                    class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
+                                    style="min-height: 46px; max-height: 120px;"
+                                    id="messageInput"></textarea>
+                                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 flex items-center justify-center transition-all shadow-lg hover:shadow-blue-500/25">
+                                    <i class="fas fa-paper-plane text-white text-xs"></i>
+                                </button>
+                            </div>
+                            <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0 hidden sm:flex">
+                                <i class="fas fa-smile text-gray-400"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
-            </div>
+            <?php else: ?>
+                <!-- Empty State -->
+                <div class="glass-panel rounded-2xl md:rounded-3xl flex-1 flex items-center justify-center shadow-2xl empty-state">
+                    <div class="text-center px-6">
+                        <div class="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
+                            <i class="fas fa-comments text-4xl md:text-5xl text-white"></i>
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            SocialChat'ga xush kelibsiz!
+                        </h2>
+                        <p class="text-gray-400 text-sm md:text-base mb-6 max-w-md">
+                            Muloqotni boshlash uchun chap tomondan suhbatdosh tanlang
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button class="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105" onclick="toggleSidebar()">
+                                <i class="fas fa-users mr-2"></i> Kontaktlar
+                            </button>
+                            <button onclick="openLogoutModal()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-sign-out-alt"></i> Chiqish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -494,108 +436,82 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
     </form>
 
     <script>
-        let currentChat = null;
-
+        // Toggle sidebar for mobile
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
 
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
-
-            if (sidebar.classList.contains('active')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
         }
 
-        function openChat(name, initials, status) {
-            currentChat = {
-                name,
-                initials,
-                status
-            };
-
-            // Update chat header
-            document.getElementById('chatName').textContent = name;
-            document.getElementById('chatAvatar').querySelector('span').textContent = initials;
-
-            // Update status
-            const statusElement = document.getElementById('chatOnlineStatus');
-            const statusDot = document.getElementById('chatStatus');
-            if (status === 'online') {
-                statusElement.innerHTML = '<span class="text-green-400">● Onlayn</span>';
-                statusDot.className = 'absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot';
-            } else {
-                statusElement.innerHTML = '<span class="text-gray-400">● Offline</span>';
-                statusDot.className = 'absolute bottom-0 right-0 w-3 h-3 bg-gray-500 rounded-full border-2 border-slate-800';
-            }
-
-            // Show chat window, hide empty state
-            document.getElementById('emptyState').classList.add('hidden');
-            document.getElementById('chatWindow').classList.remove('hidden');
-            document.getElementById('chatWindow').style.display = 'flex';
-
-            // Add active class to selected user
-            document.querySelectorAll('.user-card').forEach(card => {
-                card.classList.remove('active');
-            });
-            event.currentTarget.classList.add('active');
-
-            // Close sidebar on mobile
-            if (window.innerWidth < 768) {
-                toggleSidebar();
-            }
-
-            // Focus on message input
-            setTimeout(() => {
-                document.getElementById('messageInput').focus();
-            }, 300);
-        }
-
+        // Close chat and return to empty state
         function closeChat() {
-            currentChat = null;
+            window.location.href = window.location.pathname;
+        }
 
-            // Hide chat window, show empty state
-            document.getElementById('chatWindow').classList.add('hidden');
-            document.getElementById('chatWindow').style.display = 'none';
-            document.getElementById('emptyState').classList.remove('hidden');
+        // Open logout modal
+        function openLogoutModal() {
+            const modal = document.getElementById('logoutModal');
+            modal.classList.remove('hidden');
+        }
 
-            // Remove active class from all users
-            document.querySelectorAll('.user-card').forEach(card => {
-                card.classList.remove('active');
+        // Close logout modal
+        function closeLogoutModal() {
+            const modal = document.getElementById('logoutModal');
+            modal.classList.add('hidden');
+        }
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('messageInput');
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
         }
 
-        // Logout Modal Functions
-        function openLogoutModal() {
-            document.getElementById('logoutModal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+        // Handle message form submission
+        const messageForm = document.getElementById('messageForm');
+        if (messageForm) {
+            messageForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const messageInput = document.getElementById('messageInput');
+                const message = messageInput.value.trim();
+
+                if (message) {
+                    // Add your message sending logic here
+                    console.log('Sending message:', message);
+                    messageInput.value = '';
+                    messageInput.style.height = '46px';
+                }
+            });
         }
 
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').classList.add('hidden');
-            document.body.style.overflow = '';
+        // Scroll messages to bottom
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
         }
+
+        // Initial scroll to bottom
+        scrollToBottom();
 
         async function performLogout() {
             const logoutBtn = document.getElementById('logoutBtn');
             const originalHTML = logoutBtn.innerHTML;
 
             // Show loading state
-            logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Logging out...</span>';
+            logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Chiqilmoqda...</span>';
             logoutBtn.disabled = true;
 
             try {
-                // Get CSRF token
                 const csrfToken = '<?php echo $_SESSION["csrf_token"]; ?>';
-
-                // Create form data
                 const formData = new FormData();
                 formData.append('csrf_token', csrfToken);
 
-                // Send POST request directly to the exact file to prevent POST-to-GET redirect
                 const response = await fetch('logout/index.php', {
                     method: 'POST',
                     body: formData,
@@ -604,102 +520,32 @@ echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
                     }
                 });
 
-                // Check if response is JSON
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-
                     if (data.success) {
-                        // Redirect to login page on successful logout
                         window.location.href = 'login/';
                     } else {
-                        // Show error message
-                        alert(data.message || 'An error occurred during logout.');
+                        alert(data.message || 'Xatolik yuz berdi.');
                         logoutBtn.innerHTML = originalHTML;
                         logoutBtn.disabled = false;
                     }
                 } else {
-                    // If response is not JSON, force redirect
                     window.location.href = 'login/';
                 }
             } catch (error) {
                 console.error('Logout error:', error);
-                // Force redirect to login page even if network error occurs
                 window.location.href = 'login/';
             }
         }
 
-        // Auto-resize textarea
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            });
-
-            // Send message on Enter
-            messageInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (this.value.trim()) {
-                        sendMessage(this.value);
-                        this.value = '';
-                        this.style.height = 'auto';
-                    }
-                }
-            });
-        }
-
-        function sendMessage(text) {
-            const container = document.getElementById('messagesContainer');
-            const time = new Date().toLocaleTimeString('uz-UZ', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            const messageHTML = `
-                <div class="flex items-start gap-2 md:gap-3 justify-end">
-                    <div class="max-w-[75%] md:max-w-md">
-                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                            <p class="text-sm">${text}</p>
-                        </div>
-                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                            ${time} <i class="fas fa-check text-blue-400 text-[10px]"></i>
-                        </p>
-                    </div>
-                </div>
-            `;
-
-            container.insertAdjacentHTML('beforeend', messageHTML);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // Close logout modal on Escape key
+        // Close modal with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeLogoutModal();
             }
         });
-
-        // Close sidebar on window resize (desktop)
-        window.addEventListener('resize', function() {
-            if (window.innerWidth >= 768) {
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('sidebarOverlay');
-                sidebar.classList.remove('active');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-
-        // Initialize - show empty state
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('emptyState').classList.remove('hidden');
-            document.getElementById('chatWindow').classList.add('hidden');
-            document.getElementById('chatWindow').style.display = 'none';
-        });
     </script>
-
 </body>
 
 </html>
