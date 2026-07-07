@@ -7,8 +7,15 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
+// Generate CSRF token for logout
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 include 'db.php';
 $db = new Database();
+
+echo $_SESSION['user']['id'] . ' ' . $_SESSION['user']['name'];
 ?>
 
 <!DOCTYPE html>
@@ -146,6 +153,10 @@ $db = new Database();
             animation: fadeIn 0.5s ease-out;
         }
 
+        .logout-modal {
+            animation: fadeIn 0.2s ease-out;
+        }
+
         @media (max-width: 768px) {
             .sidebar-panel {
                 position: fixed;
@@ -184,6 +195,29 @@ $db = new Database();
 
     <!-- Mobile Sidebar Overlay -->
     <div class="sidebar-overlay md:hidden" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="fixed inset-0 z-[60] flex items-center justify-center hidden" id="logoutModal">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeLogoutModal()"></div>
+        <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-sm w-full mx-4 relative z-10 logout-modal">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-sign-out-alt text-red-400 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Chiqish</h3>
+                <p class="text-gray-400 text-sm mb-6">Haqiqatdan ham akkauntdan chiqmoqchimisiz?</p>
+                <div class="flex gap-3">
+                    <button onclick="closeLogoutModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium">
+                        Bekor qilish
+                    </button>
+                    <button onclick="performLogout()" id="logoutBtn" class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2">
+                        <span>Chiqish</span>
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="flex h-screen p-3 md:p-4 gap-3 md:gap-4">
 
@@ -308,8 +342,8 @@ $db = new Database();
                         </p>
                         <p class="text-xs text-gray-400">Mening profilim</p>
                     </div>
-                    <button class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
-                        <i class="fas fa-cog text-gray-400 text-sm"></i>
+                    <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group" title="Chiqish">
+                        <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                     </button>
                 </div>
             </div>
@@ -330,9 +364,14 @@ $db = new Database();
                     <p class="text-gray-400 text-sm md:text-base mb-6 max-w-md">
                         Muloqotni boshlash uchun chap tomondan suhbatdosh tanlang
                     </p>
-                    <button class="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105" onclick="toggleSidebar()">
-                        <i class="fas fa-users mr-2"></i> Kontaktlar
-                    </button>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button class="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105" onclick="toggleSidebar()">
+                            <i class="fas fa-users mr-2"></i> Kontaktlar
+                        </button>
+                        <button onclick="openLogoutModal()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-sign-out-alt"></i> Chiqish
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -369,8 +408,8 @@ $db = new Database();
                         <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors hidden sm:flex">
                             <i class="fas fa-video text-gray-400"></i>
                         </button>
-                        <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors">
-                            <i class="fas fa-ellipsis-v text-gray-400"></i>
+                        <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
+                            <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                         </button>
                     </div>
                 </div>
@@ -449,6 +488,11 @@ $db = new Database();
         </div>
     </div>
 
+    <!-- Hidden form for CSRF token -->
+    <form id="logoutForm" action="logout" method="POST" class="hidden">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+    </form>
+
     <script>
         let currentChat = null;
 
@@ -524,6 +568,67 @@ $db = new Database();
             });
         }
 
+        // Logout Modal Functions
+        function openLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        async function performLogout() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            const originalHTML = logoutBtn.innerHTML;
+
+            // Show loading state
+            logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Logging out...</span>';
+            logoutBtn.disabled = true;
+
+            try {
+                // Get CSRF token
+                const csrfToken = '<?php echo $_SESSION["csrf_token"]; ?>';
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('csrf_token', csrfToken);
+
+                // Send POST request directly to the exact file to prevent POST-to-GET redirect
+                const response = await fetch('logout/index.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Redirect to login page on successful logout
+                        window.location.href = 'login/';
+                    } else {
+                        // Show error message
+                        alert(data.message || 'An error occurred during logout.');
+                        logoutBtn.innerHTML = originalHTML;
+                        logoutBtn.disabled = false;
+                    }
+                } else {
+                    // If response is not JSON, force redirect
+                    window.location.href = 'login/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Force redirect to login page even if network error occurs
+                window.location.href = 'login/';
+            }
+        }
+
         // Auto-resize textarea
         const messageInput = document.getElementById('messageInput');
         if (messageInput) {
@@ -568,6 +673,13 @@ $db = new Database();
             container.insertAdjacentHTML('beforeend', messageHTML);
             container.scrollTop = container.scrollHeight;
         }
+
+        // Close logout modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLogoutModal();
+            }
+        });
 
         // Close sidebar on window resize (desktop)
         window.addEventListener('resize', function() {

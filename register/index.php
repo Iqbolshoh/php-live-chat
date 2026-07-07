@@ -64,22 +64,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $defaultRole = 'user';
 
     try {
         $userId = $db->insert('users', [
             'name' => $name,
             'email' => $email,
-            'password' => $hashedPassword,
-            'role' => $defaultRole
+            'password' => $hashedPassword
         ]);
 
         $_SESSION['loggedin'] = true;
         $_SESSION['user'] = [
             'id' => $userId,
             'name' => $name,
-            'email' => $email,
-            'role' => $defaultRole
+            'email' => $email
         ];
 
         echo json_encode([
