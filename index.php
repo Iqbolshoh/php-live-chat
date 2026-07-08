@@ -126,14 +126,14 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 <div class="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
                     <i class="fas fa-sign-out-alt text-red-400 text-2xl"></i>
                 </div>
-                <h3 class="text-xl font-bold mb-2">Chiqish</h3>
-                <p class="text-gray-400 text-sm mb-6">Haqiqatdan ham akkauntdan chiqmoqchimisiz?</p>
+                <h3 class="text-xl font-bold mb-2" data-i18n="logout_confirm_title">Chiqish</h3>
+                <p class="text-gray-400 text-sm mb-6" data-i18n="logout_confirm_text">Haqiqatdan ham akkauntdan chiqmoqchimisiz?</p>
                 <div class="flex gap-3">
-                    <button onclick="closeLogoutModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium">
+                    <button onclick="closeLogoutModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium" data-i18n="cancel">
                         Bekor qilish
                     </button>
                     <button onclick="performLogout()" id="logoutBtn" class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2">
-                        <span>Chiqish</span>
+                        <span data-i18n="logout">Chiqish</span>
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
@@ -152,7 +152,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 <h3 class="text-xl font-bold mb-2" id="confirmModalTitle">Tasdiqlash</h3>
                 <p class="text-gray-400 text-sm mb-6" id="confirmModalText"></p>
                 <div class="flex gap-3">
-                    <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium">
+                    <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium" data-i18n="cancel">
                         Bekor qilish
                     </button>
                     <button id="confirmModalActionBtn" class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 transition-all font-medium">
@@ -168,7 +168,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMyProfileModal()"></div>
         <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-md w-full relative z-10 logout-modal max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold">Mening profilim</h3>
+                <h3 class="text-xl font-bold" data-i18n="my_profile">Mening profilim</h3>
                 <button onclick="closeMyProfileModal()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
                     <i class="fas fa-times text-gray-400"></i>
                 </button>
@@ -176,22 +176,22 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
             <form id="myProfileNameForm" class="space-y-4 mb-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2" for="myProfileName">Ism</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2" for="myProfileName" data-i18n="display_name">Ism</label>
                     <input type="text" id="myProfileName" name="name" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white" required>
                 </div>
                 <p class="text-xs text-gray-500"><?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?></p>
-                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors">
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors" data-i18n="save_name">
                     Ismni saqlash
                 </button>
             </form>
 
             <div class="border-t border-gray-700/50 pt-6">
-                <h4 class="text-sm font-semibold text-gray-300 mb-4">Parolni o'zgartirish</h4>
+                <h4 class="text-sm font-semibold text-gray-300 mb-4" data-i18n="change_password">Parolni o'zgartirish</h4>
                 <form id="myProfilePasswordForm" class="space-y-4">
-                    <input type="password" id="currentPassword" placeholder="Joriy parol" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
-                    <input type="password" id="newPassword" placeholder="Yangi parol" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
-                    <input type="password" id="confirmNewPassword" placeholder="Yangi parolni tasdiqlang" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
-                    <button type="submit" class="w-full py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 font-semibold rounded-xl transition-all">
+                    <input type="password" id="currentPassword" data-i18n-placeholder="current_password" placeholder="Joriy parol" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <input type="password" id="newPassword" data-i18n-placeholder="new_password" placeholder="Yangi parol" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <input type="password" id="confirmNewPassword" data-i18n-placeholder="confirm_new_password" placeholder="Yangi parolni tasdiqlang" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <button type="submit" class="w-full py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 font-semibold rounded-xl transition-all" data-i18n="update_password">
                         Parolni yangilash
                     </button>
                 </form>
@@ -204,7 +204,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReceiverProfileModal()"></div>
         <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-sm w-full relative z-10 logout-modal">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold">Foydalanuvchi</h3>
+                <h3 class="text-xl font-bold" data-i18n="user_profile_title">Foydalanuvchi</h3>
                 <button onclick="closeReceiverProfileModal()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
                     <i class="fas fa-times text-gray-400"></i>
                 </button>
@@ -230,13 +230,21 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             SocialChat
                         </h2>
                     </div>
-                    <button class="md:hidden w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" onclick="toggleSidebar()">
-                        <i class="fas fa-times text-gray-400"></i>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <select id="langSwitcher" class="bg-slate-800/50 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer" title="Til / Language / Язык / Забон">
+                            <option value="uz">UZ</option>
+                            <option value="en">EN</option>
+                            <option value="ru">RU</option>
+                            <option value="tg">TJ</option>
+                        </select>
+                        <button class="md:hidden w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" onclick="toggleSidebar()">
+                            <i class="fas fa-times text-gray-400"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="relative">
-                    <input type="text" id="contactSearchInput" placeholder="Qidirish..." class="w-full bg-slate-800/50 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm transition-all">
+                    <input type="text" id="contactSearchInput" data-i18n-placeholder="search_contacts" placeholder="Qidirish..." class="w-full bg-slate-800/50 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm transition-all">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
                 </div>
             </div>
@@ -268,7 +276,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <p class="text-xs text-gray-400">Onlayn</p>
+                            <p class="text-xs text-gray-400" data-i18n="online">Onlayn</p>
                         </div>
                     </a>
                 <?php endforeach; ?>
@@ -286,10 +294,10 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             <p class="font-semibold text-sm truncate group-hover/profile:text-blue-400 transition-colors">
                                 <?php echo isset($_SESSION['user']['email']) ? htmlspecialchars($_SESSION['user']['email']) : 'User'; ?>
                             </p>
-                            <p class="text-xs text-gray-400">Mening profilim</p>
+                            <p class="text-xs text-gray-400" data-i18n="my_profile">Mening profilim</p>
                         </div>
                     </button>
-                    <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group flex-shrink-0" title="Chiqish">
+                    <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group flex-shrink-0" data-i18n-title="logout" title="Chiqish">
                         <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                     </button>
                 </div>
@@ -316,12 +324,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 </div>
                                 <div>
                                     <h3 class="font-bold text-sm md:text-base"><?= htmlspecialchars($_SESSION['receiver']['name']) ?></h3>
-                                    <p class="text-xs text-green-400">● Onlayn</p>
+                                    <p class="text-xs text-green-400">● <span data-i18n="online">Onlayn</span></p>
                                 </div>
                             </button>
                         </div>
                         <div class="flex gap-1 md:gap-2">
-                            <button type="button" onclick="toggleMessageSearch()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors" title="Xabarlarni qidirish">
+                            <button type="button" onclick="toggleMessageSearch()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors" data-i18n-title="search_messages_tooltip" title="Xabarlarni qidirish">
                                 <i class="fas fa-search text-gray-400"></i>
                             </button>
                             <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
@@ -332,7 +340,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <div id="messageSearchBar" class="hidden items-center gap-2 px-4 py-2 border-b border-gray-700/30">
                         <i class="fas fa-search text-gray-500 text-sm"></i>
-                        <input type="text" id="messageSearchInput" placeholder="Xabarlarni qidirish..." class="flex-1 bg-transparent focus:outline-none text-sm">
+                        <input type="text" id="messageSearchInput" data-i18n-placeholder="search_messages_placeholder" placeholder="Xabarlarni qidirish..." class="flex-1 bg-transparent focus:outline-none text-sm">
                         <span id="messageSearchCount" class="text-xs text-gray-500 flex-shrink-0"></span>
                         <button type="button" onclick="closeMessageSearch()" class="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-times text-gray-400 text-xs"></i>
@@ -346,7 +354,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         <div id="editBar" class="hidden items-center gap-3 mb-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                             <i class="fas fa-pen text-blue-400"></i>
                             <div class="flex-1 min-w-0">
-                                <p class="text-xs text-blue-400 font-semibold">Xabarni tahrirlash</p>
+                                <p class="text-xs text-blue-400 font-semibold" data-i18n="editing_message">Xabarni tahrirlash</p>
                                 <p class="text-xs text-gray-400 truncate" id="editBarPreview"></p>
                             </div>
                             <button type="button" onclick="cancelEditMessage()" class="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
@@ -355,18 +363,18 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         </div>
                         <div id="recordingBar" class="hidden items-center gap-3 mb-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
                             <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse-dot"></span>
-                            <span class="text-sm text-red-400 flex-1">Ovozli xabar yozilmoqda... <span id="recordingTime">00:00</span></span>
-                            <button type="button" onclick="cancelRecording()" class="text-xs text-gray-400 hover:text-white transition-colors">Bekor qilish</button>
+                            <span class="text-sm text-red-400 flex-1"><span data-i18n="recording_in_progress">Ovozli xabar yozilmoqda...</span> <span id="recordingTime">00:00</span></span>
+                            <button type="button" onclick="cancelRecording()" class="text-xs text-gray-400 hover:text-white transition-colors" data-i18n="cancel">Bekor qilish</button>
                             <button type="button" onclick="stopRecording()" class="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
                                 <i class="fas fa-stop text-white text-xs"></i>
                             </button>
                         </div>
                         <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST" id="messageForm">
                             <input type="file" id="attachmentInput" accept="image/*" class="hidden">
-                            <button type="button" id="attachBtn" onclick="document.getElementById('attachmentInput').click()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" title="Rasm yuborish (5 MB gacha)">
+                            <button type="button" id="attachBtn" onclick="document.getElementById('attachmentInput').click()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" data-i18n-title="attach_tooltip" title="Rasm yuborish (5 MB gacha)">
                                 <i class="fas fa-paperclip text-gray-400"></i>
                             </button>
-                            <button type="button" id="micBtn" onclick="toggleRecording()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" title="Ovozli xabar (1 daqiqagacha)">
+                            <button type="button" id="micBtn" onclick="toggleRecording()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" data-i18n-title="mic_tooltip" title="Ovozli xabar (1 daqiqagacha)">
                                 <i class="fas fa-microphone text-gray-400"></i>
                             </button>
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
@@ -374,6 +382,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             <div class="flex-1 relative">
                                 <textarea
                                     rows="1"
+                                    data-i18n-placeholder="message_placeholder"
                                     placeholder="Xabar yozing..."
                                     class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
                                     style="min-height: 46px; max-height: 120px;"
@@ -395,18 +404,18 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         <div class="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
                             <i class="fas fa-comments text-4xl md:text-5xl text-white"></i>
                         </div>
-                        <h2 class="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        <h2 class="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent" data-i18n="welcome_title">
                             SocialChat'ga xush kelibsiz!
                         </h2>
-                        <p class="text-gray-400 text-sm md:text-base mb-6 max-w-md">
+                        <p class="text-gray-400 text-sm md:text-base mb-6 max-w-md" data-i18n="welcome_text">
                             Muloqotni boshlash uchun chap tomondan suhbatdosh tanlang
                         </p>
                         <div class="flex flex-col sm:flex-row gap-3 justify-center">
                             <button class="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all transform hover:scale-105" onclick="toggleSidebar()">
-                                <i class="fas fa-users mr-2"></i> Kontaktlar
+                                <i class="fas fa-users mr-2"></i> <span data-i18n="contacts_button">Kontaktlar</span>
                             </button>
                             <button onclick="openLogoutModal()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
-                                <i class="fas fa-sign-out-alt"></i> Chiqish
+                                <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Chiqish</span>
                             </button>
                         </div>
                     </div>
@@ -425,6 +434,273 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         const userId = <?= (int)$_SESSION['user']['id'] ?>;
         const receiverInitials = '<?= $receiverInitials ?>';
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // ============ Translations (interface only — chat content stays as typed) ============
+        const TRANSLATIONS = {
+            uz: {
+                search_contacts: 'Qidirish...',
+                my_profile: 'Mening profilim',
+                online: 'Onlayn',
+                no_contacts: 'Kontaktlar topilmadi',
+                no_search_results: 'Hech narsa topilmadi',
+                search_messages_placeholder: 'Xabarlarni qidirish...',
+                search_messages_tooltip: 'Xabarlarni qidirish',
+                results_count: '{count} ta natija',
+                welcome_title: 'SocialChat\'ga xush kelibsiz!',
+                welcome_text: 'Muloqotni boshlash uchun chap tomondan suhbatdosh tanlang',
+                contacts_button: 'Kontaktlar',
+                logout: 'Chiqish',
+                logout_confirm_title: 'Chiqish',
+                logout_confirm_text: 'Haqiqatdan ham akkauntdan chiqmoqchimisiz?',
+                cancel: 'Bekor qilish',
+                logging_out: 'Chiqilmoqda...',
+                no_messages: 'Hali xabarlar yo\'q',
+                send_first_message: 'Birinchi xabarni yuboring!',
+                load_error: 'Xabarlarni yuklashda xatolik yuz berdi',
+                retry: 'Qayta urinish',
+                message_placeholder: 'Xabar yozing...',
+                attach_tooltip: 'Rasm yuborish (5 MB gacha)',
+                mic_tooltip: 'Ovozli xabar (1 daqiqagacha)',
+                recording_in_progress: 'Ovozli xabar yozilmoqda...',
+                editing_message: 'Xabarni tahrirlash',
+                edit: 'Tahrirlash',
+                copy: 'Nusxalash',
+                delete: 'O\'chirish',
+                copied: 'Xabar nusxalandi!',
+                copy_failed: 'Nusxalashda xatolik!',
+                message_deleted: 'Xabar o\'chirildi!',
+                message_updated: 'Xabar yangilandi!',
+                generic_error: 'Xatolik yuz berdi.',
+                delete_confirm_title: 'Xabarni o\'chirish',
+                delete_confirm_text: 'Haqiqatdan ham ushbu xabarni o\'chirishni istaysizmi?',
+                passwords_mismatch: 'Yangi parollar mos kelmadi.',
+                mic_unsupported: 'Brauzeringiz ovoz yozishni qo\'llab-quvvatlamaydi.',
+                mic_denied: 'Mikrofonga ruxsat berilmadi.',
+                image_only: 'Faqat rasm fayllarini yuborish mumkin.',
+                image_too_big: 'Rasm hajmi 5 MB dan oshmasligi kerak.',
+                reacted: '{name} {emoji} bilan reaksiya bildirdi',
+                just_now: 'Hozir',
+                display_name: 'Ism',
+                save_name: 'Ismni saqlash',
+                change_password: 'Parolni o\'zgartirish',
+                current_password: 'Joriy parol',
+                new_password: 'Yangi parol',
+                confirm_new_password: 'Yangi parolni tasdiqlang',
+                update_password: 'Parolni yangilash',
+                user_profile_title: 'Foydalanuvchi',
+                profile_update_error: 'Profilni yangilashda xatolik yuz berdi.',
+                password_update_error: 'Parolni yangilashda xatolik yuz berdi.',
+                send_error: 'Xabar yuborishda xatolik!',
+            },
+            en: {
+                search_contacts: 'Search...',
+                my_profile: 'My profile',
+                online: 'Online',
+                no_contacts: 'No contacts found',
+                no_search_results: 'Nothing found',
+                search_messages_placeholder: 'Search messages...',
+                search_messages_tooltip: 'Search messages',
+                results_count: '{count} results',
+                welcome_title: 'Welcome to SocialChat!',
+                welcome_text: 'Select a contact on the left to start chatting',
+                contacts_button: 'Contacts',
+                logout: 'Log out',
+                logout_confirm_title: 'Log out',
+                logout_confirm_text: 'Are you sure you want to log out?',
+                cancel: 'Cancel',
+                logging_out: 'Logging out...',
+                no_messages: 'No messages yet',
+                send_first_message: 'Send the first message!',
+                load_error: 'Failed to load messages',
+                retry: 'Retry',
+                message_placeholder: 'Type a message...',
+                attach_tooltip: 'Send an image (up to 5 MB)',
+                mic_tooltip: 'Voice message (up to 1 minute)',
+                recording_in_progress: 'Recording voice message...',
+                editing_message: 'Editing message',
+                edit: 'Edit',
+                copy: 'Copy',
+                delete: 'Delete',
+                copied: 'Message copied!',
+                copy_failed: 'Failed to copy!',
+                message_deleted: 'Message deleted!',
+                message_updated: 'Message updated!',
+                generic_error: 'Something went wrong.',
+                delete_confirm_title: 'Delete message',
+                delete_confirm_text: 'Are you sure you want to delete this message?',
+                passwords_mismatch: 'New passwords do not match.',
+                mic_unsupported: 'Your browser does not support voice recording.',
+                mic_denied: 'Microphone access was denied.',
+                image_only: 'Only image files can be sent.',
+                image_too_big: 'Image size must not exceed 5 MB.',
+                reacted: '{name} reacted with {emoji}',
+                just_now: 'Just now',
+                display_name: 'Name',
+                save_name: 'Save name',
+                change_password: 'Change password',
+                current_password: 'Current password',
+                new_password: 'New password',
+                confirm_new_password: 'Confirm new password',
+                update_password: 'Update password',
+                user_profile_title: 'User',
+                profile_update_error: 'Failed to update profile.',
+                password_update_error: 'Failed to update password.',
+                send_error: 'Failed to send message!',
+            },
+            ru: {
+                search_contacts: 'Поиск...',
+                my_profile: 'Мой профиль',
+                online: 'В сети',
+                no_contacts: 'Контакты не найдены',
+                no_search_results: 'Ничего не найдено',
+                search_messages_placeholder: 'Поиск по сообщениям...',
+                search_messages_tooltip: 'Поиск по сообщениям',
+                results_count: '{count} результатов',
+                welcome_title: 'Добро пожаловать в SocialChat!',
+                welcome_text: 'Выберите собеседника слева, чтобы начать общение',
+                contacts_button: 'Контакты',
+                logout: 'Выйти',
+                logout_confirm_title: 'Выход',
+                logout_confirm_text: 'Вы действительно хотите выйти из аккаунта?',
+                cancel: 'Отмена',
+                logging_out: 'Выход...',
+                no_messages: 'Пока нет сообщений',
+                send_first_message: 'Отправьте первое сообщение!',
+                load_error: 'Не удалось загрузить сообщения',
+                retry: 'Повторить',
+                message_placeholder: 'Введите сообщение...',
+                attach_tooltip: 'Отправить изображение (до 5 МБ)',
+                mic_tooltip: 'Голосовое сообщение (до 1 минуты)',
+                recording_in_progress: 'Запись голосового сообщения...',
+                editing_message: 'Редактирование сообщения',
+                edit: 'Изменить',
+                copy: 'Копировать',
+                delete: 'Удалить',
+                copied: 'Сообщение скопировано!',
+                copy_failed: 'Не удалось скопировать!',
+                message_deleted: 'Сообщение удалено!',
+                message_updated: 'Сообщение обновлено!',
+                generic_error: 'Произошла ошибка.',
+                delete_confirm_title: 'Удалить сообщение',
+                delete_confirm_text: 'Вы действительно хотите удалить это сообщение?',
+                passwords_mismatch: 'Новые пароли не совпадают.',
+                mic_unsupported: 'Ваш браузер не поддерживает запись голоса.',
+                mic_denied: 'Доступ к микрофону запрещён.',
+                image_only: 'Можно отправлять только изображения.',
+                image_too_big: 'Размер изображения не должен превышать 5 МБ.',
+                reacted: '{name} отреагировал(а) {emoji}',
+                just_now: 'Сейчас',
+                display_name: 'Имя',
+                save_name: 'Сохранить имя',
+                change_password: 'Изменить пароль',
+                current_password: 'Текущий пароль',
+                new_password: 'Новый пароль',
+                confirm_new_password: 'Подтвердите новый пароль',
+                update_password: 'Обновить пароль',
+                user_profile_title: 'Пользователь',
+                profile_update_error: 'Не удалось обновить профиль.',
+                password_update_error: 'Не удалось обновить пароль.',
+                send_error: 'Не удалось отправить сообщение!',
+            },
+            tg: {
+                search_contacts: 'Ҷустуҷӯ...',
+                my_profile: 'Профили ман',
+                online: 'Онлайн',
+                no_contacts: 'Тамос ёфт нашуд',
+                no_search_results: 'Чизе ёфт нашуд',
+                search_messages_placeholder: 'Ҷустуҷӯи паёмҳо...',
+                search_messages_tooltip: 'Ҷустуҷӯи паёмҳо',
+                results_count: '{count} натиҷа',
+                welcome_title: 'Хуш омадед ба SocialChat!',
+                welcome_text: 'Барои сӯҳбат аз тарафи чап ҳамсӯҳбатро интихоб кунед',
+                contacts_button: 'Тамосҳо',
+                logout: 'Баромадан',
+                logout_confirm_title: 'Баромадан',
+                logout_confirm_text: 'Ҳақиқатан мехоҳед аз ҳисоб бароед?',
+                cancel: 'Бекор кардан',
+                logging_out: 'Баромадан...',
+                no_messages: 'Ҳанӯз паём нест',
+                send_first_message: 'Паёми аввалро фиристед!',
+                load_error: 'Хатогӣ ҳангоми боркунии паёмҳо',
+                retry: 'Аз нав кӯшиш кунед',
+                message_placeholder: 'Паём нависед...',
+                attach_tooltip: 'Фиристодани расм (то 5 МБ)',
+                mic_tooltip: 'Паёми овозӣ (то 1 дақиқа)',
+                recording_in_progress: 'Сабти паёми овозӣ...',
+                editing_message: 'Таҳрири паём',
+                edit: 'Таҳрир',
+                copy: 'Нусхабардорӣ',
+                delete: 'Нест кардан',
+                copied: 'Паём нусха бардошта шуд!',
+                copy_failed: 'Хатогӣ ҳангоми нусхабардорӣ!',
+                message_deleted: 'Паём нест карда шуд!',
+                message_updated: 'Паём навсозӣ шуд!',
+                generic_error: 'Хатогӣ рух дод.',
+                delete_confirm_title: 'Нест кардани паём',
+                delete_confirm_text: 'Ҳақиқатан мехоҳед ин паёмро нест кунед?',
+                passwords_mismatch: 'Рамзҳои нав мувофиқат намекунанд.',
+                mic_unsupported: 'Браузери шумо сабти овозро дастгирӣ намекунад.',
+                mic_denied: 'Дастрасӣ ба микрофон рад карда шуд.',
+                image_only: 'Танҳо файлҳои расм фиристода мешаванд.',
+                image_too_big: 'Ҳаҷми расм набояд аз 5 МБ зиёд бошад.',
+                reacted: '{name} бо {emoji} реаксия нишон дод',
+                just_now: 'Ҳозир',
+                display_name: 'Ном',
+                save_name: 'Номро нигоҳ доред',
+                change_password: 'Иваз кардани рамз',
+                current_password: 'Рамзи ҷорӣ',
+                new_password: 'Рамзи нав',
+                confirm_new_password: 'Рамзи нави худро тасдиқ кунед',
+                update_password: 'Навсозии рамз',
+                user_profile_title: 'Корбар',
+                profile_update_error: 'Хатогӣ ҳангоми навсозии профил.',
+                password_update_error: 'Хатогӣ ҳангоми навсозии рамз.',
+                send_error: 'Хатогӣ ҳангоми фиристодани паём!',
+            },
+        };
+
+        let currentLang = localStorage.getItem('chatLang') || 'uz';
+
+        function t(key, params) {
+            const dictionary = TRANSLATIONS[currentLang] || TRANSLATIONS.uz;
+            let text = dictionary[key] ?? TRANSLATIONS.uz[key] ?? key;
+            if (params) {
+                Object.keys(params).forEach(paramKey => {
+                    text = text.replace(`{${paramKey}}`, params[paramKey]);
+                });
+            }
+            return text;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                el.title = t(el.dataset.i18nTitle);
+            });
+        }
+
+        function setLanguage(lang) {
+            if (!TRANSLATIONS[lang]) return;
+            currentLang = lang;
+            localStorage.setItem('chatLang', lang);
+            applyTranslations();
+
+            // Static labels are updated in place, but dynamically built content
+            // (contacts, messages) embeds translated text inside its HTML and
+            // must be rebuilt to pick up the new language.
+            applyContactFilter();
+            renderedMessages.clear();
+            messagesLoaded = false;
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) messagesContainer.innerHTML = '';
+            if (receiverId) loadMessages();
+        }
+
         const STANDARD_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
         const EMOJI_PICKER_LIST = [
             '😀', '😁', '😂', '🤣', '😊', '😍', '😘', '😜', '🤔', '😎', '😴', '😢',
@@ -490,7 +766,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
 
         function formatTime(dateString) {
-            if (!dateString) return 'Hozir';
+            if (!dateString) return t('just_now');
             const date = new Date(dateString);
             const hours = date.getHours().toString().padStart(2, '0');
             const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -579,15 +855,15 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 const response = await fetch('update_message.php', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    showNotification('Xabar yangilandi!', 'success');
+                    showNotification(t('message_updated'), 'success');
                     loadMessages();
                     return true;
                 }
-                showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                showNotification(data.message || t('generic_error'), 'error');
                 return false;
             } catch (error) {
                 console.error('Update message error:', error);
-                showNotification('Xatolik yuz berdi.', 'error');
+                showNotification(t('generic_error'), 'error');
                 return false;
             }
         }
@@ -605,7 +881,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         function copyTextToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
-                    showNotification('Xabar nusxalandi!', 'success');
+                    showNotification(t('copied'), 'success');
                 }).catch(() => {
                     fallbackCopyToClipboard(text);
                 });
@@ -624,9 +900,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             textarea.select();
             try {
                 const successful = document.execCommand('copy');
-                showNotification(successful ? 'Xabar nusxalandi!' : 'Nusxalashda xatolik!', successful ? 'success' : 'error');
+                showNotification(successful ? t('copied') : t('copy_failed'), successful ? 'success' : 'error');
             } catch (error) {
-                showNotification('Nusxalashda xatolik!', 'error');
+                showNotification(t('copy_failed'), 'error');
             }
             document.body.removeChild(textarea);
         }
@@ -648,9 +924,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
             openConfirmModal({
-                title: 'Xabarni o\'chirish',
-                text: 'Haqiqatdan ham ushbu xabarni o\'chirishni istaysizmi?',
-                actionLabel: 'O\'chirish',
+                title: t('delete_confirm_title'),
+                text: t('delete_confirm_text'),
+                actionLabel: t('delete'),
                 onConfirm: () => performDeleteMessage(messageId)
             });
         }
@@ -672,9 +948,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             setTimeout(() => messageGroup.remove(), 300);
                         }
                         renderedMessages.delete(Number(messageId));
-                        showNotification('Xabar o\'chirildi!', 'success');
+                        showNotification(t('message_deleted'), 'success');
                     } else {
-                        showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                        showNotification(data.message || t('generic_error'), 'error');
                     }
                 });
         }
@@ -777,7 +1053,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         async function performLogout() {
             const logoutBtn = document.getElementById('logoutBtn');
             const originalHTML = logoutBtn.innerHTML;
-            logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Chiqilmoqda...</span>';
+            logoutBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>${t('logging_out')}</span>`;
             logoutBtn.disabled = true;
 
             try {
@@ -833,12 +1109,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         function buildMenuHTML(message, isOwn) {
             const items = [];
             if (isOwn && message.type === 'text') {
-                items.push(`<button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-edit text-blue-400"></i><span>Tahrirlash</span></button>`);
+                items.push(`<button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-edit text-blue-400"></i><span>${t('edit')}</span></button>`);
             }
             if (message.type === 'text') {
-                items.push(`<button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-copy text-green-400"></i><span>Nusxalash</span></button>`);
+                items.push(`<button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-copy text-green-400"></i><span>${t('copy')}</span></button>`);
             }
-            items.push(`<button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400"><i class="fas fa-trash-alt"></i><span>O'chirish</span></button>`);
+            items.push(`<button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400"><i class="fas fa-trash-alt"></i><span>${t('delete')}</span></button>`);
             return items.join('');
         }
 
@@ -939,7 +1215,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             currentReactions.forEach(reaction => {
                 const key = `${reaction.user_id}:${reaction.emoji}`;
                 if (!previousKeys.has(key) && reaction.user_id !== userId) {
-                    showNotification(`${reaction.user_name} ${reaction.emoji} bilan reaksiya bildirdi`, 'info');
+                    showNotification(t('reacted', { name: reaction.user_name, emoji: reaction.emoji }), 'info');
                 }
             });
         }
@@ -978,8 +1254,8 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 <div class="flex items-center justify-center h-full">
                                     <div class="text-center text-gray-500">
                                         <i class="fas fa-comments text-4xl mb-3"></i>
-                                        <p>Hali xabarlar yo'q</p>
-                                        <p class="text-sm">Birinchi xabarni yuboring!</p>
+                                        <p>${t('no_messages')}</p>
+                                        <p class="text-sm">${t('send_first_message')}</p>
                                     </div>
                                 </div>`;
                             renderedMessages.clear();
@@ -1054,9 +1330,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             <div class="flex items-center justify-center h-full">
                                 <div class="text-center text-red-400">
                                     <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
-                                    <p>Xabarlarni yuklashda xatolik yuz berdi</p>
+                                    <p>${t('load_error')}</p>
                                     <button onclick="loadMessages()" class="mt-3 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-colors">
-                                        <i class="fas fa-redo mr-2"></i>Qayta urinish
+                                        <i class="fas fa-redo mr-2"></i>${t('retry')}
                                     </button>
                                 </div>
                             </div>`;
@@ -1136,7 +1412,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (!container) return;
 
             if (!contacts || contacts.length === 0) {
-                const message = contactSearchTerm ? 'Hech narsa topilmadi' : 'Kontaktlar topilmadi';
+                const message = contactSearchTerm ? t('no_search_results') : t('no_contacts');
                 container.innerHTML = `<p class="text-center text-gray-500 text-sm py-6">${message}</p>`;
                 return;
             }
@@ -1261,11 +1537,11 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
             const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
             if (!file.type.startsWith('image/')) {
-                showNotification('Faqat rasm fayllarini yuborish mumkin.', 'error');
+                showNotification(t('image_only'), 'error');
                 return;
             }
             if (file.size > MAX_IMAGE_SIZE) {
-                showNotification('Rasm hajmi 5 MB dan oshmasligi kerak.', 'error');
+                showNotification(t('image_too_big'), 'error');
                 return;
             }
 
@@ -1292,11 +1568,11 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 if (data.success) {
                     loadMessages();
                 } else {
-                    showNotification(data.message || 'Yuborishda xatolik!', 'error');
+                    showNotification(data.message || t('send_error'), 'error');
                 }
             } catch (error) {
                 console.error('Attachment send error:', error);
-                showNotification('Xatolik yuz berdi!', 'error');
+                showNotification(t('generic_error'), 'error');
             } finally {
                 if (attachBtn) attachBtn.disabled = false;
                 if (micBtn) micBtn.disabled = false;
@@ -1324,14 +1600,14 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (!receiverId) return;
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showNotification('Brauzeringiz ovoz yozishni qo\'llab-quvvatlamaydi.', 'error');
+                showNotification(t('mic_unsupported'), 'error');
                 return;
             }
 
             try {
                 activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             } catch (error) {
-                showNotification('Mikrofonga ruxsat berilmadi.', 'error');
+                showNotification(t('mic_denied'), 'error');
                 return;
             }
 
@@ -1480,12 +1756,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 messageInput.style.height = 'auto';
                                 loadMessages();
                             } else {
-                                showNotification(data.message || 'Xabar yuborishda xatolik!', 'error');
+                                showNotification(data.message || t('send_error'), 'error');
                             }
                         }
                     } catch (error) {
                         console.error('Send message error:', error);
-                        showNotification('Xatolik yuz berdi!', 'error');
+                        showNotification(t('generic_error'), 'error');
                     } finally {
                         submitBtn.innerHTML = originalHTML;
                         submitBtn.disabled = false;
@@ -1541,7 +1817,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         const data = await response.json();
                         showNotification(data.message, data.success ? 'success' : 'error');
                     } catch (error) {
-                        showNotification('Profilni yangilashda xatolik yuz berdi.', 'error');
+                        showNotification(t('profile_update_error'), 'error');
                     } finally {
                         submitBtn.disabled = false;
                     }
@@ -1557,7 +1833,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     const confirmNewPassword = document.getElementById('confirmNewPassword').value;
 
                     if (newPassword !== confirmNewPassword) {
-                        showNotification('Yangi parollar mos kelmadi.', 'error');
+                        showNotification(t('passwords_mismatch'), 'error');
                         return;
                     }
 
@@ -1577,7 +1853,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         showNotification(data.message, data.success ? 'success' : 'error');
                         if (data.success) passwordForm.reset();
                     } catch (error) {
-                        showNotification('Parolni yangilashda xatolik yuz berdi.', 'error');
+                        showNotification(t('password_update_error'), 'error');
                     } finally {
                         submitBtn.disabled = false;
                     }
@@ -1625,6 +1901,15 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         });
 
         document.addEventListener('DOMContentLoaded', function() {
+            const langSwitcher = document.getElementById('langSwitcher');
+            if (langSwitcher) {
+                langSwitcher.value = currentLang;
+                langSwitcher.addEventListener('change', function() {
+                    setLanguage(this.value);
+                });
+            }
+            applyTranslations();
+
             if (receiverId) {
                 loadMessages();
             }
