@@ -141,6 +141,82 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         </div>
     </div>
 
+    <!-- Generic confirmation modal (replaces native confirm()) -->
+    <div class="fixed inset-0 z-[60] flex items-center justify-center hidden" id="confirmModal">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeConfirmModal()"></div>
+        <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-sm w-full mx-4 relative z-10 logout-modal">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-trash-alt text-red-400 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2" id="confirmModalTitle">Tasdiqlash</h3>
+                <p class="text-gray-400 text-sm mb-6" id="confirmModalText"></p>
+                <div class="flex gap-3">
+                    <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors font-medium">
+                        Bekor qilish
+                    </button>
+                    <button id="confirmModalActionBtn" class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 transition-all font-medium">
+                        Ha
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My profile modal -->
+    <div class="fixed inset-0 z-[60] flex items-center justify-center hidden p-4" id="myProfileModal">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMyProfileModal()"></div>
+        <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-md w-full relative z-10 logout-modal max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold">Mening profilim</h3>
+                <button onclick="closeMyProfileModal()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-gray-400"></i>
+                </button>
+            </div>
+
+            <form id="myProfileNameForm" class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2" for="myProfileName">Ism</label>
+                    <input type="text" id="myProfileName" name="name" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white" required>
+                </div>
+                <p class="text-xs text-gray-500"><?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?></p>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors">
+                    Ismni saqlash
+                </button>
+            </form>
+
+            <div class="border-t border-gray-700/50 pt-6">
+                <h4 class="text-sm font-semibold text-gray-300 mb-4">Parolni o'zgartirish</h4>
+                <form id="myProfilePasswordForm" class="space-y-4">
+                    <input type="password" id="currentPassword" placeholder="Joriy parol" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <input type="password" id="newPassword" placeholder="Yangi parol" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <input type="password" id="confirmNewPassword" placeholder="Yangi parolni tasdiqlang" minlength="8" class="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white" required>
+                    <button type="submit" class="w-full py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 font-semibold rounded-xl transition-all">
+                        Parolni yangilash
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receiver (chat partner) profile modal -->
+    <div class="fixed inset-0 z-[60] flex items-center justify-center hidden p-4" id="receiverProfileModal">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReceiverProfileModal()"></div>
+        <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-sm w-full relative z-10 logout-modal">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold">Foydalanuvchi</h3>
+                <button onclick="closeReceiverProfileModal()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-gray-400"></i>
+                </button>
+            </div>
+            <div class="text-center">
+                <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg" id="receiverProfileAvatar"></div>
+                <h4 class="text-lg font-bold" id="receiverProfileName"></h4>
+                <p class="text-gray-400 text-sm" id="receiverProfileEmail"></p>
+            </div>
+        </div>
+    </div>
+
     <div class="flex h-screen p-3 md:p-4 gap-3 md:gap-4">
 
         <div class="sidebar-panel glass-panel rounded-2xl md:rounded-3xl flex flex-col flex-shrink-0 shadow-2xl md:relative md:transform-none" id="sidebar">
@@ -200,7 +276,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
             <div class="p-3 md:p-4 border-t border-gray-700/30">
                 <div class="flex items-center gap-3">
-                    <a href="profile.php" class="flex items-center gap-3 flex-1 min-w-0 hover:no-underline group/profile">
+                    <button type="button" onclick="openMyProfileModal()" class="flex items-center gap-3 flex-1 min-w-0 text-left group/profile">
                         <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
                             <span class="font-bold text-white text-sm">
                                 <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
@@ -212,7 +288,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             </p>
                             <p class="text-xs text-gray-400">Mening profilim</p>
                         </div>
-                    </a>
+                    </button>
                     <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group flex-shrink-0" title="Chiqish">
                         <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                     </button>
@@ -231,16 +307,18 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             <button class="hidden md:flex w-10 h-10 rounded-xl hover:bg-white/10 items-center justify-center flex-shrink-0 transition-colors" onclick="closeChat()">
                                 <i class="fas fa-arrow-left text-gray-400"></i>
                             </button>
-                            <div class="relative flex-shrink-0">
-                                <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                                    <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
+                            <button type="button" onclick="openReceiverProfileModal()" class="flex items-center gap-3 text-left hover:opacity-80 transition-opacity">
+                                <div class="relative flex-shrink-0">
+                                    <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                                        <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
+                                    </div>
+                                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
                                 </div>
-                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-sm md:text-base"><?= htmlspecialchars($_SESSION['receiver']['name']) ?></h3>
-                                <p class="text-xs text-green-400">● Onlayn</p>
-                            </div>
+                                <div>
+                                    <h3 class="font-bold text-sm md:text-base"><?= htmlspecialchars($_SESSION['receiver']['name']) ?></h3>
+                                    <p class="text-xs text-green-400">● Onlayn</p>
+                                </div>
+                            </button>
                         </div>
                         <div class="flex gap-1 md:gap-2">
                             <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
@@ -253,6 +331,16 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         </div>
 
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
+                        <div id="editBar" class="hidden items-center gap-3 mb-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                            <i class="fas fa-pen text-blue-400"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-blue-400 font-semibold">Xabarni tahrirlash</p>
+                                <p class="text-xs text-gray-400 truncate" id="editBarPreview"></p>
+                            </div>
+                            <button type="button" onclick="cancelEditMessage()" class="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+                                <i class="fas fa-times text-gray-400"></i>
+                            </button>
+                        </div>
                         <div id="recordingBar" class="hidden items-center gap-3 mb-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
                             <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse-dot"></span>
                             <span class="text-sm text-red-400 flex-1">Ovozli xabar yozilmoqda... <span id="recordingTime">00:00</span></span>
@@ -339,6 +427,10 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         let lastContactsData = '';
         let messagesPollId = null;
         let contactsPollId = null;
+        let hasMoreOlderMessages = true;
+        let isLoadingOlderMessages = false;
+        let editingMessageId = null;
+        let confirmModalCallback = null;
 
         // Tracks messages already in the DOM (id -> {data, signature, node}) so
         // polling only patches what actually changed instead of replacing the
@@ -346,13 +438,22 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         // and "shaking" on every refresh.
         const renderedMessages = new Map();
 
-        // Monitor scroll event to check if user is reading old messages
+        // Latest known contact list (id -> contact), used to populate the
+        // receiver profile modal without an extra network round-trip.
+        const contactsById = new Map();
+
+        // Monitor scroll event to check if user is reading old messages, and
+        // load an older page of history once they scroll near the top.
         document.addEventListener('DOMContentLoaded', function() {
             const messagesContainer = document.getElementById('messagesContainer');
             if (messagesContainer) {
                 messagesContainer.addEventListener('scroll', function() {
                     const distanceFromBottom = this.scrollHeight - this.scrollTop - this.clientHeight;
                     isUserScrolling = distanceFromBottom > 50;
+
+                    if (this.scrollTop < 100) {
+                        loadOlderMessages();
+                    }
                 });
             }
         });
@@ -422,37 +523,125 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         });
 
+        // ============ Inline Message Editing (Telegram-style) ============
         function editMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
             const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
             if (!messageGroup || messageGroup.dataset.type !== 'text') return;
             const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
             if (!messageP) return;
-            const messageText = messageP.textContent;
-            const newMessage = prompt('Xabarni tahrirlash:', messageText);
-            if (newMessage && newMessage.trim() && newMessage.trim() !== messageText) {
-                updateMessage(messageId, newMessage.trim());
+
+            editingMessageId = Number(messageId);
+
+            const textarea = document.getElementById('messageInput');
+            textarea.value = messageP.textContent;
+            textarea.dispatchEvent(new Event('input'));
+            textarea.focus();
+
+            document.getElementById('editBarPreview').textContent = messageP.textContent;
+            const editBar = document.getElementById('editBar');
+            editBar.classList.remove('hidden');
+            editBar.classList.add('flex');
+        }
+
+        function cancelEditMessage() {
+            editingMessageId = null;
+            const textarea = document.getElementById('messageInput');
+            textarea.value = '';
+            textarea.style.height = 'auto';
+
+            const editBar = document.getElementById('editBar');
+            editBar.classList.add('hidden');
+            editBar.classList.remove('flex');
+        }
+
+        async function updateMessage(messageId, newMessage) {
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            formData.append('message', newMessage);
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('update_message.php', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Xabar yangilandi!', 'success');
+                    loadMessages();
+                    return true;
+                }
+                showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                return false;
+            } catch (error) {
+                console.error('Update message error:', error);
+                showNotification('Xatolik yuz berdi.', 'error');
+                return false;
             }
         }
 
+        // ============ Copy (with a fallback for non-secure contexts) ============
         function copyMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
             const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
             if (!messageGroup) return;
             const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
             if (!messageP) return;
-            const messageText = messageP.textContent;
-            navigator.clipboard.writeText(messageText).then(() => {
-                showNotification('Xabar nusxalandi!', 'success');
-            }).catch(() => {
+            copyTextToClipboard(messageP.textContent);
+        }
+
+        function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showNotification('Xabar nusxalandi!', 'success');
+                }).catch(() => {
+                    fallbackCopyToClipboard(text);
+                });
+            } else {
+                fallbackCopyToClipboard(text);
+            }
+        }
+
+        function fallbackCopyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                const successful = document.execCommand('copy');
+                showNotification(successful ? 'Xabar nusxalandi!' : 'Nusxalashda xatolik!', successful ? 'success' : 'error');
+            } catch (error) {
                 showNotification('Nusxalashda xatolik!', 'error');
-            });
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // ============ Confirmation Modal (replaces native confirm()) ============
+        function openConfirmModal({ title, text, actionLabel = 'Ha', onConfirm }) {
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalText').textContent = text;
+            document.getElementById('confirmModalActionBtn').textContent = actionLabel;
+            confirmModalCallback = onConfirm;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmModalCallback = null;
         }
 
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-            if (!confirm('Xabarni o\'chirishni istaysizmi?')) return;
+            openConfirmModal({
+                title: 'Xabarni o\'chirish',
+                text: 'Haqiqatdan ham ushbu xabarni o\'chirishni istaysizmi?',
+                actionLabel: 'O\'chirish',
+                onConfirm: () => performDeleteMessage(messageId)
+            });
+        }
 
+        function performDeleteMessage(messageId) {
             const formData = new FormData();
             formData.append('message_id', messageId);
             formData.append('csrf_token', csrfToken);
@@ -474,27 +663,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         showNotification(data.message || 'Xatolik yuz berdi.', 'error');
                     }
                 });
-        }
-
-        async function updateMessage(messageId, newMessage) {
-            const formData = new FormData();
-            formData.append('message_id', messageId);
-            formData.append('message', newMessage);
-            formData.append('csrf_token', csrfToken);
-
-            try {
-                const response = await fetch('update_message.php', { method: 'POST', body: formData });
-                const data = await response.json();
-                if (data.success) {
-                    showNotification('Xabar yangilandi!', 'success');
-                    loadMessages();
-                } else {
-                    showNotification(data.message || 'Xatolik yuz berdi.', 'error');
-                }
-            } catch (error) {
-                console.error('Update message error:', error);
-                showNotification('Xatolik yuz berdi.', 'error');
-            }
         }
 
         // ============ Reactions ============
@@ -752,6 +920,23 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
 
         // ============ Message Loading ============
+        function notifyNewReactions(previousReactions, currentReactions) {
+            const previousKeys = new Set(previousReactions.map(reaction => `${reaction.user_id}:${reaction.emoji}`));
+            currentReactions.forEach(reaction => {
+                const key = `${reaction.user_id}:${reaction.emoji}`;
+                if (!previousKeys.has(key) && reaction.user_id !== userId) {
+                    showNotification(`${reaction.user_name} ${reaction.emoji} bilan reaksiya bildirdi`, 'info');
+                }
+            });
+        }
+
+        // Only the most recent page is polled; this returns the id of the oldest
+        // message currently rendered so "load more" can page further back.
+        function getOldestLoadedMessageId() {
+            if (renderedMessages.size === 0) return null;
+            return Math.min(...renderedMessages.keys());
+        }
+
         function loadMessages() {
             if (!receiverId) return;
 
@@ -771,6 +956,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 .then(data => {
                     if (!data.success) return;
                     const messages = data.data || [];
+                    hasMoreOlderMessages = !!data.has_more;
 
                     if (messages.length === 0) {
                         if (renderedMessages.size > 0 || !messagesLoaded) {
@@ -793,6 +979,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         messagesContainer.innerHTML = '';
                     }
 
+                    // This fetch only ever covers the most recent page. Messages older
+                    // than that (loaded via scroll-up pagination) must never be touched
+                    // by the removal pass below, or "load more" history would vanish
+                    // again on the next poll.
+                    const minIdInResponse = Math.min(...messages.map(message => Number(message.id)));
+
                     const seenIds = new Set();
                     const wasNearBottom = !isUserScrolling;
                     let appendedNew = false;
@@ -813,7 +1005,11 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             appendedNew = true;
                         } else if (cached.signature !== signature) {
                             // Changed (edited text, status flipped to read, new reaction) -> patch in place
+                            const previousReactions = cached.data.reactions || [];
                             patchMessageNode(cached.node, message);
+                            if (userId === message.sender_id) {
+                                notifyNewReactions(previousReactions, message.reactions || []);
+                            }
                             cached.data = message;
                             cached.signature = signature;
                         } else {
@@ -821,9 +1017,10 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         }
                     });
 
-                    // Remove messages that were deleted elsewhere
+                    // Remove messages that were deleted elsewhere, but only within the
+                    // freshly fetched window — never touch older paginated-in history.
                     renderedMessages.forEach((cached, id) => {
-                        if (!seenIds.has(id)) {
+                        if (id >= minIdInResponse && !seenIds.has(id)) {
                             cached.node.remove();
                             renderedMessages.delete(id);
                         }
@@ -850,6 +1047,60 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 </div>
                             </div>`;
                     }
+                });
+        }
+
+        function loadOlderMessages() {
+            if (!receiverId || isLoadingOlderMessages || !hasMoreOlderMessages) return;
+            const oldestId = getOldestLoadedMessageId();
+            if (oldestId === null) return;
+
+            isLoadingOlderMessages = true;
+            const messagesContainer = document.getElementById('messagesContainer');
+
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'text-center py-3';
+            loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin text-gray-400"></i>';
+            messagesContainer.insertBefore(loadingIndicator, messagesContainer.firstChild);
+
+            const formData = new FormData();
+            formData.append('id', receiverId);
+            formData.append('before_id', oldestId);
+
+            fetch('get_messages.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    loadingIndicator.remove();
+                    if (!data.success) return;
+
+                    hasMoreOlderMessages = !!data.has_more;
+                    const messages = data.data || [];
+                    if (messages.length === 0) return;
+
+                    const prevScrollHeight = messagesContainer.scrollHeight;
+                    const prevScrollTop = messagesContainer.scrollTop;
+
+                    const fragment = document.createDocumentFragment();
+                    messages.forEach(message => {
+                        const id = Number(message.id);
+                        if (renderedMessages.has(id)) return;
+                        const wrapper = document.createElement('div');
+                        wrapper.innerHTML = buildMessageHTML(message);
+                        const node = wrapper.firstElementChild;
+                        fragment.appendChild(node);
+                        renderedMessages.set(id, { data: message, signature: messageSignature(message), node });
+                    });
+                    messagesContainer.insertBefore(fragment, messagesContainer.firstChild);
+
+                    // Keep the user's visual position stable after prepending older content
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight - prevScrollHeight + prevScrollTop;
+                })
+                .catch(error => {
+                    console.error('Error loading older messages:', error);
+                    loadingIndicator.remove();
+                })
+                .finally(() => {
+                    isLoadingOlderMessages = false;
                 });
         }
 
