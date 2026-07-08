@@ -626,22 +626,132 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
+        // ============ Message Rendering ============
+        function statusIconHTML(status) {
+            return status === 'read'
+                ? '<i class="fas fa-check-double text-blue-400 text-[10px]"></i>'
+                : '<i class="fas fa-check text-gray-400 text-[10px]"></i>';
+        }
+
+        function buildBubbleInner(message) {
+            let mediaHtml = '';
+            if (message.type === 'image' && message.file_path) {
+                const source = escapeAttribute(message.file_path);
+                mediaHtml = `<img src="${source}" alt="Rasm" class="rounded-lg max-w-full max-h-72 cursor-pointer" onclick="window.open('${source}', '_blank')" loading="lazy">`;
+            } else if (message.type === 'audio' && message.file_path) {
+                const source = escapeAttribute(message.file_path);
+                mediaHtml = `<audio controls class="max-w-[240px] h-10 align-middle" src="${source}"></audio>`;
+            }
+            const captionHtml = message.message
+                ? `<p class="text-sm ${mediaHtml ? 'mt-2' : ''}">${escapeHtml(message.message)}</p>`
+                : '';
+            return mediaHtml + captionHtml;
+        }
+
+        function buildMenuHTML(message, isOwn) {
+            const items = [];
+            if (isOwn && message.type === 'text') {
+                items.push(`<button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-edit text-blue-400"></i><span>Tahrirlash</span></button>`);
+            }
+            if (message.type === 'text') {
+                items.push(`<button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors"><i class="fas fa-copy text-green-400"></i><span>Nusxalash</span></button>`);
+            }
+            items.push(`<button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400"><i class="fas fa-trash-alt"></i><span>O'chirish</span></button>`);
+            return items.join('');
+        }
+
+        function messageSignature(message) {
+            const reactionsKey = (message.reactions || [])
+                .map(reaction => `${reaction.emoji}:${reaction.user_id}`)
+                .sort()
+                .join(',');
+            return `${message.message}|${message.status}|${message.edited_at || ''}|${reactionsKey}`;
+        }
+
+        function buildMessageHTML(message) {
+            const isOwn = userId === message.sender_id;
+            const bubbleInner = buildBubbleInner(message);
+            const menuInner = buildMenuHTML(message, isOwn);
+            const reactionPickerInner = buildReactionPickerHTML(message.id);
+            const reactionsHtml = buildReactionsHTML(message);
+            const editedHidden = (message.type === 'text' && message.edited_at) ? '' : 'hidden';
+            const bubblePadding = message.type === 'image' ? 'p-1.5' : 'px-3 py-2 md:px-4 md:py-3';
+            const sideClass = isOwn ? '-left-14' : '-right-14';
+            const menuSideClass = isOwn ? '-left-2' : '-right-2';
+
+            const actionsHtml = `
+                <div class="message-actions absolute top-2 ${sideClass} flex items-center gap-1 z-10">
+                    <button onclick="toggleReactionPicker(event, ${message.id})" class="message-menu-btn w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all">
+                        <i class="fas fa-face-smile text-gray-400 text-[10px]"></i>
+                    </button>
+                    <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all">
+                        <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                    </button>
+                </div>
+                <div id="reactionPicker-${message.id}" class="reaction-picker hidden absolute ${menuSideClass} top-8 flex items-center gap-1.5 bg-slate-800 rounded-full shadow-2xl border border-gray-700/30 px-3 py-2 z-50">
+                    ${reactionPickerInner}
+                </div>
+                <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute ${menuSideClass} top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                    ${menuInner}
+                </div>`;
+
+            const metaHtml = `
+                <p class="message-meta text-[10px] text-gray-500 mt-1 ${isOwn ? 'mr-1 justify-end' : 'ml-1'} flex items-center gap-1">
+                    <span class="message-time">${formatTime(message.created_at)}</span>
+                    <span class="message-edited-tag italic ${editedHidden}">(tahrirlangan)</span>
+                    ${isOwn ? `<span class="message-status">${statusIconHTML(message.status)}</span>` : ''}
+                </p>`;
+
+            const bubbleClass = isOwn ? 'message-sent text-white' : 'message-received';
+
+            if (isOwn) {
+                return `
+                <div class="flex items-start gap-2 md:gap-3 justify-end message-group group" data-message-id="${message.id}" data-type="${message.type}">
+                    <div class="max-w-[75%] md:max-w-md relative">
+                        ${actionsHtml}
+                        <div class="${bubbleClass} rounded-2xl rounded-tr-none ${bubblePadding}">${bubbleInner}</div>
+                        <div class="message-reactions-slot">${reactionsHtml}</div>
+                        ${metaHtml}
+                    </div>
+                </div>`;
+            }
+
+            return `
+            <div class="flex items-start gap-2 md:gap-3 message-group group" data-message-id="${message.id}" data-type="${message.type}">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="text-xs font-bold text-white">${receiverInitials}</span>
+                </div>
+                <div class="max-w-[75%] md:max-w-md relative">
+                    ${actionsHtml}
+                    <div class="${bubbleClass} rounded-2xl rounded-tl-none ${bubblePadding}">${bubbleInner}</div>
+                    <div class="message-reactions-slot">${reactionsHtml}</div>
+                    ${metaHtml}
+                </div>
+            </div>`;
+        }
+
+        function patchMessageNode(node, message) {
+            if (!node) return;
+
+            const statusEl = node.querySelector('.message-status');
+            if (statusEl) statusEl.innerHTML = statusIconHTML(message.status);
+
+            const bubble = node.querySelector('.message-sent, .message-received');
+            if (bubble) bubble.innerHTML = buildBubbleInner(message);
+
+            const timeEl = node.querySelector('.message-time');
+            if (timeEl) timeEl.textContent = formatTime(message.created_at);
+
+            const editedEl = node.querySelector('.message-edited-tag');
+            if (editedEl) {
+                editedEl.classList.toggle('hidden', !(message.type === 'text' && message.edited_at));
+            }
+
+            const reactionsSlot = node.querySelector('.message-reactions-slot');
+            if (reactionsSlot) reactionsSlot.innerHTML = buildReactionsHTML(message);
+        }
+
         // ============ Message Loading ============
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatTime(dateString) {
-            if (!dateString) return 'Hozir';
-            const date = new Date(dateString);
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            return `${hours}:${minutes}`;
-        }
-
         function loadMessages() {
             if (!receiverId) return;
 
@@ -659,91 +769,69 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             fetch('get_messages.php', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
-                    // Check if data changed to prevent flickering
-                    const currentMessagesData = JSON.stringify(data.data);
-                    if (lastMessagesData === currentMessagesData) return;
-                    lastMessagesData = currentMessagesData;
+                    if (!data.success) return;
+                    const messages = data.data || [];
 
-                    let newHTML = '';
-
-                    if (!data.data || data.data.length === 0) {
-                        newHTML = `
-                            <div class="flex items-center justify-center h-full">
-                                <div class="text-center text-gray-500">
-                                    <i class="fas fa-comments text-4xl mb-3"></i>
-                                    <p>Hali xabarlar yo'q</p>
-                                    <p class="text-sm">Birinchi xabarni yuboring!</p>
-                                </div>
-                            </div>`;
-                    } else {
-                        data.data.forEach(message => {
-                            const time = formatTime(message.created_at);
-                            // Determine status icon (sent = gray single tick, read = blue double tick)
-                            const statusIcon = message.status === 'read' 
-                                ? '<i class="fas fa-check-double text-blue-400 text-[10px]"></i>' 
-                                : '<i class="fas fa-check text-gray-400 text-[10px]"></i>';
-
-                            if (userId === message.sender_id) {
-                                // Sent message
-                                newHTML += `
-                                <div class="flex items-start gap-2 md:gap-3 justify-end message-group group" data-message-id="${message.id}">
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <button onclick="toggleMessageMenu(event, ${message.id})" 
-                                                class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                        </button>
-                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-edit text-blue-400"></i><span>Tahrirlash</span>
-                                            </button>
-                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i><span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i><span>O'chirish</span>
-                                            </button>
-                                        </div>
-                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm">${escapeHtml(message.message)}</p>
-                                        </div>
-                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                                            ${time} ${statusIcon}
-                                        </p>
+                    if (messages.length === 0) {
+                        if (renderedMessages.size > 0 || !messagesLoaded) {
+                            messagesContainer.innerHTML = `
+                                <div class="flex items-center justify-center h-full">
+                                    <div class="text-center text-gray-500">
+                                        <i class="fas fa-comments text-4xl mb-3"></i>
+                                        <p>Hali xabarlar yo'q</p>
+                                        <p class="text-sm">Birinchi xabarni yuboring!</p>
                                     </div>
                                 </div>`;
-                            } else {
-                                // Received message
-                                newHTML += `
-                                <div class="flex items-start gap-2 md:gap-3 message-group group" data-message-id="${message.id}">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <span class="text-xs font-bold text-white">${receiverInitials}</span>
-                                    </div>
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm">${escapeHtml(message.message)}</p>
-                                        </div>
-                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                        </button>
-                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i><span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i><span>O'chirish</span>
-                                            </button>
-                                        </div>
-                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">${time}</p>
-                                    </div>
-                                </div>`;
-                            }
-                        });
+                            renderedMessages.clear();
+                        }
+                        messagesLoaded = true;
+                        return;
                     }
 
-                    messagesContainer.innerHTML = newHTML;
+                    // Clear the spinner/empty-state placeholder before appending real messages
+                    if (renderedMessages.size === 0 && !messagesContainer.querySelector('.message-group')) {
+                        messagesContainer.innerHTML = '';
+                    }
 
-                    // Scroll to bottom only if user is not actively scrolling up
-                    if (!messagesLoaded || !isUserScrolling) {
+                    const seenIds = new Set();
+                    const wasNearBottom = !isUserScrolling;
+                    let appendedNew = false;
+
+                    messages.forEach(message => {
+                        const id = Number(message.id);
+                        seenIds.add(id);
+                        const signature = messageSignature(message);
+                        const cached = renderedMessages.get(id);
+
+                        if (!cached) {
+                            // Brand-new message -> append without touching existing nodes
+                            const wrapper = document.createElement('div');
+                            wrapper.innerHTML = buildMessageHTML(message);
+                            const node = wrapper.firstElementChild;
+                            messagesContainer.appendChild(node);
+                            renderedMessages.set(id, { data: message, signature, node });
+                            appendedNew = true;
+                        } else if (cached.signature !== signature) {
+                            // Changed (edited text, status flipped to read, new reaction) -> patch in place
+                            patchMessageNode(cached.node, message);
+                            cached.data = message;
+                            cached.signature = signature;
+                        } else {
+                            cached.data = message;
+                        }
+                    });
+
+                    // Remove messages that were deleted elsewhere
+                    renderedMessages.forEach((cached, id) => {
+                        if (!seenIds.has(id)) {
+                            cached.node.remove();
+                            renderedMessages.delete(id);
+                        }
+                    });
+
+                    // Only auto-scroll on first load or when a new message arrived while
+                    // already near the bottom — never on a plain status/reaction update.
+                    if (!messagesLoaded || (appendedNew && wasNearBottom)) {
                         scrollToBottom();
                     }
                     messagesLoaded = true;
@@ -772,6 +860,243 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
+        // ============ Contacts Sidebar ============
+        function contactInitials(name) {
+            const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+            return ((parts[0] ? parts[0][0] : '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+        }
+
+        function renderContacts(contacts) {
+            const container = document.getElementById('contactsList');
+            if (!container) return;
+
+            if (!contacts || contacts.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 text-sm py-6">Kontaktlar topilmadi</p>';
+                return;
+            }
+
+            container.innerHTML = contacts.map(contact => {
+                const initials = contactInitials(contact.name);
+                const safeName = escapeHtml(contact.name);
+                const isActive = (receiverId && Number(contact.id) === Number(receiverId)) ? 'active' : '';
+                const unreadCount = Number(contact.unread_count) || 0;
+                const badge = unreadCount > 0
+                    ? `<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${unreadCount}</span>`
+                    : '';
+                return `
+                <a href="?id=${contact.id}" class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer block hover:no-underline ${isActive}">
+                    <div class="relative flex-shrink-0">
+                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                            <span class="font-bold text-white">${initials}</span>
+                        </div>
+                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-0.5">
+                            <p class="font-semibold text-sm truncate">${safeName}</p>
+                            ${badge}
+                        </div>
+                        <p class="text-xs text-gray-400">Onlayn</p>
+                    </div>
+                </a>`;
+            }).join('');
+        }
+
+        function loadContacts() {
+            fetch('get_contacts.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) return;
+                    const serialized = JSON.stringify(data.data);
+                    if (serialized === lastContactsData) return;
+                    lastContactsData = serialized;
+
+                    const container = document.getElementById('contactsList');
+                    const scrollTop = container ? container.scrollTop : 0;
+                    renderContacts(data.data);
+                    if (container) container.scrollTop = scrollTop;
+                })
+                .catch(error => console.error('Error loading contacts:', error));
+        }
+
+        // ============ Attachments (Images) ============
+        function handleAttachmentChange() {
+            const input = document.getElementById('attachmentInput');
+            const file = input.files[0];
+            input.value = '';
+            if (!file) return;
+
+            const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+            if (!file.type.startsWith('image/')) {
+                showNotification('Faqat rasm fayllarini yuborish mumkin.', 'error');
+                return;
+            }
+            if (file.size > MAX_IMAGE_SIZE) {
+                showNotification('Rasm hajmi 5 MB dan oshmasligi kerak.', 'error');
+                return;
+            }
+
+            uploadAttachment(file, 'image', file.name);
+        }
+
+        async function uploadAttachment(fileOrBlob, type, filename) {
+            if (!receiverId) return;
+
+            const attachBtn = document.getElementById('attachBtn');
+            const micBtn = document.getElementById('micBtn');
+            if (attachBtn) attachBtn.disabled = true;
+            if (micBtn) micBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('csrf_token', csrfToken);
+            formData.append('receiver_id', String(receiverId));
+            formData.append('type', type);
+            formData.append('attachment', fileOrBlob, filename);
+
+            try {
+                const response = await fetch('send_message.php', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    loadMessages();
+                } else {
+                    showNotification(data.message || 'Yuborishda xatolik!', 'error');
+                }
+            } catch (error) {
+                console.error('Attachment send error:', error);
+                showNotification('Xatolik yuz berdi!', 'error');
+            } finally {
+                if (attachBtn) attachBtn.disabled = false;
+                if (micBtn) micBtn.disabled = false;
+            }
+        }
+
+        // ============ Voice Recording ============
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let activeStream = null;
+        let recordingTimerId = null;
+        let recordingAutoStopId = null;
+        let recordingStartedAt = 0;
+        let recordingCancelled = false;
+
+        async function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+                return;
+            }
+            await startRecording();
+        }
+
+        async function startRecording() {
+            if (!receiverId) return;
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification('Brauzeringiz ovoz yozishni qo\'llab-quvvatlamaydi.', 'error');
+                return;
+            }
+
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (error) {
+                showNotification('Mikrofonga ruxsat berilmadi.', 'error');
+                return;
+            }
+
+            recordedChunks = [];
+            recordingCancelled = false;
+
+            const preferredMimeType = 'audio/webm';
+            const supportsPreferred = window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(preferredMimeType);
+            mediaRecorder = supportsPreferred ? new MediaRecorder(activeStream, { mimeType: preferredMimeType }) : new MediaRecorder(activeStream);
+
+            mediaRecorder.addEventListener('dataavailable', (event) => {
+                if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+            });
+
+            mediaRecorder.addEventListener('stop', () => {
+                activeStream.getTracks().forEach(track => track.stop());
+                clearInterval(recordingTimerId);
+                clearTimeout(recordingAutoStopId);
+
+                const recordingBar = document.getElementById('recordingBar');
+                recordingBar.classList.add('hidden');
+                recordingBar.classList.remove('flex');
+                document.getElementById('micBtn').classList.remove('bg-red-500/20');
+
+                if (recordingCancelled || recordedChunks.length === 0) {
+                    recordedChunks = [];
+                    return;
+                }
+
+                const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                const blob = new Blob(recordedChunks, { type: mimeType });
+                recordedChunks = [];
+                const extension = mimeType.includes('ogg') ? 'ogg' : 'webm';
+                uploadAttachment(blob, 'audio', `voice-message.${extension}`);
+            });
+
+            mediaRecorder.start();
+            recordingStartedAt = Date.now();
+            document.getElementById('micBtn').classList.add('bg-red-500/20');
+
+            const recordingBar = document.getElementById('recordingBar');
+            recordingBar.classList.remove('hidden');
+            recordingBar.classList.add('flex');
+
+            updateRecordingTime();
+            recordingTimerId = setInterval(updateRecordingTime, 500);
+            recordingAutoStopId = setTimeout(() => stopRecording(), MAX_RECORDING_MS);
+        }
+
+        function updateRecordingTime() {
+            const elapsedMs = Math.min(Date.now() - recordingStartedAt, MAX_RECORDING_MS);
+            const totalSeconds = Math.floor(elapsedMs / 1000);
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            const timeEl = document.getElementById('recordingTime');
+            if (timeEl) timeEl.textContent = `${minutes}:${seconds}`;
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+
+        function cancelRecording() {
+            recordingCancelled = true;
+            stopRecording();
+        }
+
+        // ============ Emoji Picker (composing) ============
+        function renderEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            if (!picker || picker.dataset.rendered) return;
+            picker.innerHTML = EMOJI_PICKER_LIST.map(emoji =>
+                `<button type="button" class="text-xl hover:scale-125 transition-transform" onclick="insertEmoji('${emoji}')">${emoji}</button>`
+            ).join('');
+            picker.dataset.rendered = '1';
+        }
+
+        function toggleEmojiPicker(event) {
+            event.stopPropagation();
+            renderEmojiPicker();
+            document.getElementById('emojiPicker').classList.toggle('hidden');
+        }
+
+        function insertEmoji(emoji) {
+            const textarea = document.getElementById('messageInput');
+            if (!textarea) return;
+            const start = textarea.selectionStart ?? textarea.value.length;
+            const end = textarea.selectionEnd ?? textarea.value.length;
+            textarea.value = textarea.value.slice(0, start) + emoji + textarea.value.slice(end);
+            const cursor = start + emoji.length;
+            textarea.focus();
+            textarea.setSelectionRange(cursor, cursor);
+            textarea.dispatchEvent(new Event('input'));
+        }
+
+        // ============ Composer Setup ============
         function setupTextarea() {
             const textarea = document.getElementById('messageInput');
             if (textarea) {
@@ -825,10 +1150,38 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
+        // ============ Polling (paused while the tab is hidden) ============
+        function startPolling() {
+            if (receiverId && !messagesPollId) {
+                messagesPollId = setInterval(loadMessages, 4000);
+            }
+            if (!contactsPollId) {
+                contactsPollId = setInterval(loadContacts, 6000);
+            }
+        }
+
+        function stopPolling() {
+            if (messagesPollId) { clearInterval(messagesPollId); messagesPollId = null; }
+            if (contactsPollId) { clearInterval(contactsPollId); contactsPollId = null; }
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                if (receiverId) loadMessages();
+                loadContacts();
+                startPolling();
+            }
+        });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeLogoutModal();
                 document.querySelectorAll('.message-dropdown').forEach(dropdown => dropdown.classList.add('hidden'));
+                document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.add('hidden'));
+                const emojiPicker = document.getElementById('emojiPicker');
+                if (emojiPicker) emojiPicker.classList.add('hidden');
             }
             if (e.ctrlKey && e.key === 'Enter') {
                 const messageForm = document.getElementById('messageForm');
@@ -839,26 +1192,31 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         document.addEventListener('DOMContentLoaded', function() {
             if (receiverId) {
                 loadMessages();
-                setInterval(loadMessages, 3000);
             }
+            loadContacts();
+            startPolling();
             setupTextarea();
             setupMessageForm();
+
+            const attachmentInput = document.getElementById('attachmentInput');
+            if (attachmentInput) attachmentInput.addEventListener('change', handleAttachmentChange);
 
             document.addEventListener('mouseover', function(e) {
                 const messageGroup = e.target.closest('.message-group');
                 if (messageGroup) {
-                    const menuBtn = messageGroup.querySelector('.message-menu-btn');
-                    if (menuBtn) menuBtn.style.opacity = '1';
+                    messageGroup.querySelectorAll('.message-menu-btn').forEach(btn => btn.style.opacity = '1');
                 }
             });
 
             document.addEventListener('mouseout', function(e) {
                 const messageGroup = e.target.closest('.message-group');
                 if (messageGroup) {
-                    const menuBtn = messageGroup.querySelector('.message-menu-btn');
                     const dropdown = messageGroup.querySelector('.message-dropdown');
-                    if (menuBtn && (!dropdown || dropdown.classList.contains('hidden'))) {
-                        menuBtn.style.opacity = '0';
+                    const reactionPicker = messageGroup.querySelector('.reaction-picker');
+                    const dropdownOpen = dropdown && !dropdown.classList.contains('hidden');
+                    const pickerOpen = reactionPicker && !reactionPicker.classList.contains('hidden');
+                    if (!dropdownOpen && !pickerOpen) {
+                        messageGroup.querySelectorAll('.message-menu-btn').forEach(btn => btn.style.opacity = '0');
                     }
                 }
             });
