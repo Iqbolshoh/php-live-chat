@@ -275,9 +275,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 <textarea
                                     rows="1"
                                     placeholder="Xabar yozing..."
-                                    class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
+                                    class="w-full bg-slate-800/50 rounded-2xl px-4 py-3 pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-sm transition-all"
                                     style="min-height: 46px; max-height: 120px;"
                                     id="messageInput" name="message"></textarea>
+                                <button type="button" id="emojiBtn" onclick="toggleEmojiPicker(event)" class="absolute right-11 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+                                    <i class="fas fa-face-smile text-gray-400 text-sm"></i>
+                                </button>
+                                <div id="emojiPicker" class="hidden absolute bottom-full right-0 mb-2 w-64 max-h-56 overflow-y-auto custom-scrollbar bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 p-3 grid grid-cols-8 gap-1 z-50"></div>
                                 <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 flex items-center justify-center transition-all shadow-lg hover:shadow-blue-500/25">
                                     <i class="fas fa-paper-plane text-white text-xs"></i>
                                 </button>

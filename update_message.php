@@ -27,10 +27,10 @@ if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || $_POST['cs
     exit;
 }
 
-$message_id = (int)$_POST['message_id'];
-$new_message = trim($_POST['message'] ?? '');
+$messageId = (int)($_POST['message_id'] ?? 0);
+$newMessageText = trim($_POST['message'] ?? '');
 
-if (empty($new_message)) {
+if (empty($newMessageText)) {
     echo json_encode([
         'success' => false,
         'message' => 'Xabar matni bo\'sh bo\'lishi mumkin emas.'
@@ -38,7 +38,7 @@ if (empty($new_message)) {
     exit;
 }
 
-if (strlen($new_message) > 5000) {
+if (strlen($newMessageText) > 5000) {
     echo json_encode([
         'success' => false,
         'message' => 'Xabar juda uzun. Maksimum 5000 ta belgi.'
@@ -50,20 +50,27 @@ include 'db.php';
 $db = new Database();
 
 // Only the original sender may edit their own message
-$message = $db->select('messages', '*', 'id = ? AND sender_id = ?', [$message_id, $_SESSION['user']['id']]);
+$existingMessage = $db->select('messages', '*', 'id = ? AND sender_id = ?', [$messageId, $_SESSION['user']['id']]);
 
-if (empty($message)) {
+if (empty($existingMessage)) {
     echo json_encode(['success' => false, 'message' => 'Xabar topilmadi!']);
+    exit;
+}
+
+// Only plain text messages can be edited
+if ($existingMessage[0]['type'] !== 'text') {
+    echo json_encode(['success' => false, 'message' => 'Faqat matnli xabarlarni tahrirlash mumkin.']);
     exit;
 }
 
 $updated = $db->update(
     'messages',
     [
-        'message' => $new_message
+        'message' => $newMessageText,
+        'edited_at' => date('Y-m-d H:i:s')
     ],
     'id = ?',
-    [$message_id]
+    [$messageId]
 );
 
 if ($updated) {

@@ -27,28 +27,34 @@ if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || $_POST['cs
     exit;
 }
 
-$message_id = (int)$_POST['message_id'];
+$messageId = (int)($_POST['message_id'] ?? 0);
 
 include 'db.php';
 $db = new Database();
 
 // Check if message belongs to user (both sender and receiver can delete)
-$message = $db->select(
+$existingMessage = $db->select(
     'messages',
     '*',
     'id = ? AND (sender_id = ? OR receiver_id = ?)',
-    [$message_id, $_SESSION['user']['id'], $_SESSION['user']['id']]
+    [$messageId, $_SESSION['user']['id'], $_SESSION['user']['id']]
 );
 
-if (empty($message)) {
+if (empty($existingMessage)) {
     echo json_encode(['success' => false, 'message' => 'Xabar topilmadi!']);
     exit;
 }
 
 // Delete message
-$deleted = $db->delete('messages', 'id = ?', [$message_id]);
+$deleted = $db->delete('messages', 'id = ?', [$messageId]);
 
 if ($deleted) {
+    // Remove the attached file from disk, if any
+    $filePath = $existingMessage[0]['file_path'] ?? null;
+    if ($filePath && is_file($filePath)) {
+        unlink($filePath);
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Xabar o\'chirildi'
