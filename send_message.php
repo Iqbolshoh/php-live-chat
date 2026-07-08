@@ -28,15 +28,6 @@ if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || $_POST['cs
     exit;
 }
 
-// Validate message content
-if (!isset($_POST['message']) || empty(trim($_POST['message']))) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Xabar matni bo\'sh bo\'lishi mumkin emas.'
-    ]);
-    exit;
-}
-
 // Validate receiver ID
 if (!isset($_POST['receiver_id']) || empty($_POST['receiver_id'])) {
     echo json_encode([
@@ -46,13 +37,23 @@ if (!isset($_POST['receiver_id']) || empty($_POST['receiver_id'])) {
     exit;
 }
 
-// Sanitize and validate inputs
-$sender_id = $_SESSION['user']['id'];
-$receiver_id = intval($_POST['receiver_id']);
-$message = trim($_POST['message']);
+$senderId = $_SESSION['user']['id'];
+$receiverId = intval($_POST['receiver_id']);
+$allowedTypes = ['text', 'image', 'audio'];
+$messageType = in_array($_POST['type'] ?? 'text', $allowedTypes, true) ? $_POST['type'] : 'text';
+$messageText = trim($_POST['message'] ?? '');
+
+// Prevent sending message to yourself
+if ($senderId === $receiverId) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'O\'zingizga xabar yubora olmaysiz.'
+    ]);
+    exit;
+}
 
 // Check message length
-if (strlen($message) > 5000) {
+if (strlen($messageText) > 5000) {
     echo json_encode([
         'success' => false,
         'message' => 'Xabar juda uzun. Maksimum 5000 ta belgi.'
@@ -60,11 +61,10 @@ if (strlen($message) > 5000) {
     exit;
 }
 
-// Prevent sending message to yourself
-if ($sender_id === $receiver_id) {
+if ($messageType === 'text' && empty($messageText)) {
     echo json_encode([
         'success' => false,
-        'message' => 'O\'zingizga xabar yubora olmaysiz.'
+        'message' => 'Xabar matni bo\'sh bo\'lishi mumkin emas.'
     ]);
     exit;
 }
@@ -74,8 +74,8 @@ include 'db.php';
 $db = new Database();
 
 // Check if receiver exists
-$receiver = $db->select('users', '*', 'id = ?', [$receiver_id]);
-if (!$receiver || count($receiver) === 0) {
+$receiver = $db->select('users', 'id', 'id = ?', [$receiverId]);
+if (empty($receiver)) {
     echo json_encode([
         'success' => false,
         'message' => 'Qabul qiluvchi topilmadi.'
@@ -83,12 +83,101 @@ if (!$receiver || count($receiver) === 0) {
     exit;
 }
 
+$filePath = null;
+
+if ($messageType !== 'text') {
+    $maxFileSize = $messageType === 'image' ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+
+    if (!isset($_FILES['attachment']) || $_FILES['attachment']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Fayl yuklashda xatolik yuz berdi.'
+        ]);
+        exit;
+    }
+
+    $uploadedFile = $_FILES['attachment'];
+
+    if ($uploadedFile['size'] > $maxFileSize) {
+        $maxFileSizeMb = $maxFileSize / (1024 * 1024);
+        echo json_encode([
+            'success' => false,
+            'message' => "Fayl hajmi {$maxFileSizeMb} MB dan oshmasligi kerak."
+        ]);
+        exit;
+    }
+
+    $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($fileInfo, $uploadedFile['tmp_name']);
+    finfo_close($fileInfo);
+
+    $allowedImageMimeTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+    ];
+    $allowedAudioMimeTypes = [
+        'audio/webm' => 'webm',
+        'audio/ogg' => 'ogg',
+        'audio/mpeg' => 'mp3',
+        'audio/wav' => 'wav',
+        'audio/mp4' => 'm4a',
+        'audio/x-m4a' => 'm4a',
+    ];
+
+    if ($messageType === 'image') {
+        if (!isset($allowedImageMimeTypes[$mimeType])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Faqat JPG, PNG, GIF yoki WEBP rasm formatlariga ruxsat berilgan.'
+            ]);
+            exit;
+        }
+        $extension = $allowedImageMimeTypes[$mimeType];
+        $uploadDir = 'uploads/images/';
+    } else {
+        if (!isset($allowedAudioMimeTypes[$mimeType])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Faqat audio fayllarni yuborish mumkin.'
+            ]);
+            exit;
+        }
+        $extension = $allowedAudioMimeTypes[$mimeType];
+        $uploadDir = 'uploads/audio/';
+    }
+
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Fayl uchun papka yaratilmadi.'
+        ]);
+        exit;
+    }
+
+    $storedFileName = uniqid($messageType . '_', true) . '.' . $extension;
+    $destinationPath = $uploadDir . $storedFileName;
+
+    if (!move_uploaded_file($uploadedFile['tmp_name'], $destinationPath)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Faylni saqlashda xatolik yuz berdi.'
+        ]);
+        exit;
+    }
+
+    $filePath = $destinationPath;
+}
+
 try {
     // Insert message into database
     $insertData = [
-        'sender_id' => $sender_id,
-        'receiver_id' => $receiver_id,
-        'message' => $message,
+        'sender_id' => $senderId,
+        'receiver_id' => $receiverId,
+        'message' => $messageText,
+        'type' => $messageType,
+        'file_path' => $filePath,
         'status' => 'sent',
         'created_at' => date('Y-m-d H:i:s')
     ];
@@ -101,20 +190,22 @@ try {
             'message' => 'Xabar muvaffaqiyatli yuborildi.',
             'data' => [
                 'id' => $insertId,
-                'sender_id' => $sender_id,
-                'receiver_id' => $receiver_id,
-                'message' => htmlspecialchars($message),
+                'sender_id' => $senderId,
+                'receiver_id' => $receiverId,
+                'message' => htmlspecialchars($messageText),
+                'type' => $messageType,
+                'file_path' => $filePath,
                 'status' => 'sent',
                 'created_at' => date('Y-m-d H:i:s')
             ]
         ]);
         exit;
-    } else {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Xabar yuborishda xatolik yuz berdi.'
-        ]);
     }
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xabar yuborishda xatolik yuz berdi.'
+    ]);
 } catch (Exception $e) {
     // Log error for debugging
     error_log('Message sending error: ' . $e->getMessage());
