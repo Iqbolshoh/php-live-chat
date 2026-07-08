@@ -236,7 +236,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 </div>
 
                 <div class="relative">
-                    <input type="text" placeholder="Qidirish..." class="w-full bg-slate-800/50 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm transition-all">
+                    <input type="text" id="contactSearchInput" placeholder="Qidirish..." class="w-full bg-slate-800/50 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm transition-all">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
                 </div>
             </div>
@@ -321,10 +321,22 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             </button>
                         </div>
                         <div class="flex gap-1 md:gap-2">
+                            <button type="button" onclick="toggleMessageSearch()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors" title="Xabarlarni qidirish">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </button>
                             <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
                                 <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                             </button>
                         </div>
+                    </div>
+
+                    <div id="messageSearchBar" class="hidden items-center gap-2 px-4 py-2 border-b border-gray-700/30">
+                        <i class="fas fa-search text-gray-500 text-sm"></i>
+                        <input type="text" id="messageSearchInput" placeholder="Xabarlarni qidirish..." class="flex-1 bg-transparent focus:outline-none text-sm">
+                        <span id="messageSearchCount" class="text-xs text-gray-500 flex-shrink-0"></span>
+                        <button type="button" onclick="closeMessageSearch()" class="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-times text-gray-400 text-xs"></i>
+                        </button>
                     </div>
 
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
@@ -431,6 +443,8 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         let isLoadingOlderMessages = false;
         let editingMessageId = null;
         let confirmModalCallback = null;
+        let latestContacts = [];
+        let contactSearchTerm = '';
 
         // Tracks messages already in the DOM (id -> {data, signature, node}) so
         // polling only patches what actually changed instead of replacing the
@@ -1122,7 +1136,8 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (!container) return;
 
             if (!contacts || contacts.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 text-sm py-6">Kontaktlar topilmadi</p>';
+                const message = contactSearchTerm ? 'Hech narsa topilmadi' : 'Kontaktlar topilmadi';
+                container.innerHTML = `<p class="text-center text-gray-500 text-sm py-6">${message}</p>`;
                 return;
             }
 
@@ -1153,6 +1168,24 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }).join('');
         }
 
+        function applyContactFilter() {
+            const term = contactSearchTerm.trim().toLowerCase();
+            const filtered = term
+                ? latestContacts.filter(contact =>
+                    contact.name.toLowerCase().includes(term) || (contact.email || '').toLowerCase().includes(term))
+                : latestContacts;
+            renderContacts(filtered);
+        }
+
+        function setupContactSearch() {
+            const input = document.getElementById('contactSearchInput');
+            if (!input) return;
+            input.addEventListener('input', function() {
+                contactSearchTerm = this.value;
+                applyContactFilter();
+            });
+        }
+
         function loadContacts() {
             fetch('get_contacts.php')
                 .then(response => response.json())
@@ -1162,12 +1195,61 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     if (serialized === lastContactsData) return;
                     lastContactsData = serialized;
 
+                    latestContacts = data.data || [];
+                    contactsById.clear();
+                    latestContacts.forEach(contact => contactsById.set(Number(contact.id), contact));
+
                     const container = document.getElementById('contactsList');
                     const scrollTop = container ? container.scrollTop : 0;
-                    renderContacts(data.data);
+                    applyContactFilter();
                     if (container) container.scrollTop = scrollTop;
                 })
                 .catch(error => console.error('Error loading contacts:', error));
+        }
+
+        // ============ Message Search (filters currently loaded messages) ============
+        function toggleMessageSearch() {
+            const bar = document.getElementById('messageSearchBar');
+            if (!bar) return;
+            if (bar.classList.contains('hidden')) {
+                bar.classList.remove('hidden');
+                bar.classList.add('flex');
+                const input = document.getElementById('messageSearchInput');
+                if (input) input.focus();
+            } else {
+                closeMessageSearch();
+            }
+        }
+
+        function closeMessageSearch() {
+            const bar = document.getElementById('messageSearchBar');
+            if (!bar) return;
+            bar.classList.add('hidden');
+            bar.classList.remove('flex');
+            const input = document.getElementById('messageSearchInput');
+            if (input) input.value = '';
+            filterRenderedMessages('');
+        }
+
+        function filterRenderedMessages(term) {
+            const normalizedTerm = term.trim().toLowerCase();
+            let matches = 0;
+            renderedMessages.forEach(cached => {
+                const text = (cached.data.message || '').toLowerCase();
+                const isMatch = !normalizedTerm || text.includes(normalizedTerm);
+                cached.node.style.display = isMatch ? '' : 'none';
+                if (normalizedTerm && isMatch) matches++;
+            });
+            const countEl = document.getElementById('messageSearchCount');
+            if (countEl) countEl.textContent = normalizedTerm ? `${matches} ta natija` : '';
+        }
+
+        function setupMessageSearch() {
+            const input = document.getElementById('messageSearchInput');
+            if (!input) return;
+            input.addEventListener('input', function() {
+                filterRenderedMessages(this.value);
+            });
         }
 
         // ============ Attachments (Images) ============
@@ -1379,22 +1461,124 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     submitBtn.disabled = true;
 
                     try {
-                        const formData = new FormData(form);
-                        const response = await fetch(form.action, { method: 'POST', body: formData });
-                        const data = await response.json();
-
-                        if (data.success) {
-                            messageInput.value = '';
-                            messageInput.style.height = 'auto';
-                            loadMessages();
+                        if (editingMessageId !== null) {
+                            // Telegram-style inline edit: the compose box currently holds
+                            // the edited text of an existing message, not a new one.
+                            const success = await updateMessage(editingMessageId, message);
+                            if (success) {
+                                messageInput.value = '';
+                                messageInput.style.height = 'auto';
+                                cancelEditMessage();
+                            }
                         } else {
-                            showNotification(data.message || 'Xabar yuborishda xatolik!', 'error');
+                            const formData = new FormData(form);
+                            const response = await fetch(form.action, { method: 'POST', body: formData });
+                            const data = await response.json();
+
+                            if (data.success) {
+                                messageInput.value = '';
+                                messageInput.style.height = 'auto';
+                                loadMessages();
+                            } else {
+                                showNotification(data.message || 'Xabar yuborishda xatolik!', 'error');
+                            }
                         }
                     } catch (error) {
                         console.error('Send message error:', error);
                         showNotification('Xatolik yuz berdi!', 'error');
                     } finally {
                         submitBtn.innerHTML = originalHTML;
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+        }
+
+        // ============ Profile Modals ============
+        function openMyProfileModal() {
+            document.getElementById('myProfileName').value = <?= json_encode($_SESSION['user']['name'] ?? '') ?>;
+            document.getElementById('myProfileModal').classList.remove('hidden');
+        }
+
+        function closeMyProfileModal() {
+            document.getElementById('myProfileModal').classList.add('hidden');
+        }
+
+        function openReceiverProfileModal() {
+            if (!receiverId) return;
+            const contact = contactsById.get(Number(receiverId));
+            const name = contact ? contact.name : <?= json_encode($_SESSION['receiver']['name'] ?? '') ?>;
+            const email = contact ? contact.email : '';
+
+            document.getElementById('receiverProfileAvatar').textContent = receiverInitials;
+            document.getElementById('receiverProfileName').textContent = name;
+            document.getElementById('receiverProfileEmail').textContent = email;
+            document.getElementById('receiverProfileModal').classList.remove('hidden');
+        }
+
+        function closeReceiverProfileModal() {
+            document.getElementById('receiverProfileModal').classList.add('hidden');
+        }
+
+        function setupMyProfileForms() {
+            const nameForm = document.getElementById('myProfileNameForm');
+            if (nameForm) {
+                nameForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const name = document.getElementById('myProfileName').value.trim();
+                    if (!name) return;
+
+                    const submitBtn = nameForm.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+
+                    const formData = new FormData();
+                    formData.append('update_profile', '1');
+                    formData.append('name', name);
+                    formData.append('csrf_token', csrfToken);
+
+                    try {
+                        const response = await fetch('profile.php', { method: 'POST', body: formData });
+                        const data = await response.json();
+                        showNotification(data.message, data.success ? 'success' : 'error');
+                    } catch (error) {
+                        showNotification('Profilni yangilashda xatolik yuz berdi.', 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+
+            const passwordForm = document.getElementById('myProfilePasswordForm');
+            if (passwordForm) {
+                passwordForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const currentPassword = document.getElementById('currentPassword').value;
+                    const newPassword = document.getElementById('newPassword').value;
+                    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+                    if (newPassword !== confirmNewPassword) {
+                        showNotification('Yangi parollar mos kelmadi.', 'error');
+                        return;
+                    }
+
+                    const submitBtn = passwordForm.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+
+                    const formData = new FormData();
+                    formData.append('update_password', '1');
+                    formData.append('current_password', currentPassword);
+                    formData.append('new_password', newPassword);
+                    formData.append('confirm_password', confirmNewPassword);
+                    formData.append('csrf_token', csrfToken);
+
+                    try {
+                        const response = await fetch('profile.php', { method: 'POST', body: formData });
+                        const data = await response.json();
+                        showNotification(data.message, data.success ? 'success' : 'error');
+                        if (data.success) passwordForm.reset();
+                    } catch (error) {
+                        showNotification('Parolni yangilashda xatolik yuz berdi.', 'error');
+                    } finally {
                         submitBtn.disabled = false;
                     }
                 });
@@ -1448,9 +1632,21 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             startPolling();
             setupTextarea();
             setupMessageForm();
+            setupContactSearch();
+            setupMessageSearch();
+            setupMyProfileForms();
 
             const attachmentInput = document.getElementById('attachmentInput');
             if (attachmentInput) attachmentInput.addEventListener('change', handleAttachmentChange);
+
+            const confirmModalActionBtn = document.getElementById('confirmModalActionBtn');
+            if (confirmModalActionBtn) {
+                confirmModalActionBtn.addEventListener('click', function() {
+                    const callback = confirmModalCallback;
+                    closeConfirmModal();
+                    if (callback) callback();
+                });
+            }
 
             document.addEventListener('mouseover', function(e) {
                 const messageGroup = e.target.closest('.message-group');
