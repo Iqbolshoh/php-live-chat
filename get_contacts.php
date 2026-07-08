@@ -11,47 +11,37 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
-// Check for POST request
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Noto\'g\'ri so\'rov'
-    ]);
-    exit;
-}
-
-// Validate receiver ID
-if (isset($_POST['id']) and !empty($_POST['id'])) {
-    $receiverId = intval($_POST['id']);
-} else {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Xabar topilmadi'
-    ]);
-    exit;
-}
-
 include 'db.php';
 $db = new Database();
+
 $currentUserId = $_SESSION['user']['id'];
 
-// Update message status to 'read' if the current user is the receiver and status is 'sent'
-$updateStatusSql = "UPDATE messages SET status = 'read' WHERE receiver_id = ? AND sender_id = ? AND status = 'sent'";
-$db->execute($updateStatusSql, [$currentUserId, $receiverId]);
-
-// Fetch messages between the two users ordered by time
-$fetchMessagesSql = "
-    SELECT * FROM messages 
-    WHERE (sender_id = ? AND receiver_id = ?) 
-       OR (sender_id = ? AND receiver_id = ?) 
-    ORDER BY created_at ASC
+// Fetch users with the latest message date and unread message count using JOIN
+$sql = "
+    SELECT
+        u.id,
+        u.name,
+        u.email,
+        MAX(m.created_at) as last_message_date,
+        SUM(CASE WHEN m.sender_id = u.id AND m.receiver_id = ? AND m.status = 'sent' THEN 1 ELSE 0 END) as unread_count
+    FROM users u
+    LEFT JOIN messages m ON (u.id = m.sender_id AND m.receiver_id = ?)
+                         OR (u.id = m.receiver_id AND m.sender_id = ?)
+    WHERE u.id != ?
+    GROUP BY u.id, u.name, u.email
+    ORDER BY (MAX(m.created_at) IS NULL) ASC, MAX(m.created_at) DESC
 ";
-$stmt = $db->execute($fetchMessagesSql, [$currentUserId, $receiverId, $receiverId, $currentUserId]);
-$messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt = $db->execute($sql, [$currentUserId, $currentUserId, $currentUserId, $currentUserId]);
+$contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($contacts as &$contact) {
+    $contact['unread_count'] = (int)$contact['unread_count'];
+}
+unset($contact);
 
 echo json_encode([
     'success' => true,
-    'messages' => 'Xabarlar topildi',
-    'data' => $messages
+    'data' => $contacts
 ]);
 exit;
