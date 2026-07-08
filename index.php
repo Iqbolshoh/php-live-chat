@@ -18,9 +18,10 @@ $db = new Database();
 $contacts = $db->select('users', '*', 'id != ?', [$_SESSION['user']['id']]);
 
 if (isset($_GET['id']) && !empty($_GET['id'])) {
-    $messages = $db->select('messages', '*', '(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)', [$_SESSION['user']['id'], $_GET['id'], $_GET['id'], $_SESSION['user']['id']]);
     $_SESSION['receiver']['id'] = $_GET['id'];
     $_SESSION['receiver']['name'] = $db->select('users', 'name', 'id = ?', [$_GET['id']])[0]['name'];
+    $receiverNameParts = explode(' ', trim($_SESSION['receiver']['name']));
+    $receiverInitials = strtoupper(substr($receiverNameParts[0], 0, 1) . (isset($receiverNameParts[1]) ? substr($receiverNameParts[1], 0, 1) : ''));
 } else {
     $messages = [];
     $_SESSION['receiver']['id'] = null;
@@ -43,160 +44,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             darkMode: 'class',
         }
     </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            background-attachment: fixed;
-            height: 100vh;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .message-sent {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-        }
-
-        .message-received {
-            background: rgba(51, 65, 85, 0.8);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .user-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .user-card:hover {
-            transform: translateX(4px);
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .user-card.active {
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            transform: translateX(4px);
-        }
-
-        .chat-window {
-            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .sidebar-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 40;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        .sidebar-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .sidebar-panel {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(59, 130, 246, 0.3);
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.5);
-        }
-
-        .pulse-dot {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        .empty-state {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .logout-modal {
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar-panel {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 85%;
-                max-width: 320px;
-                z-index: 50;
-                transform: translateX(-100%);
-            }
-
-            .sidebar-panel.active {
-                transform: translateX(0);
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="./src/styles.css">
 </head>
 
 <body class="text-gray-200 antialiased">
@@ -320,10 +168,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             </button>
                             <div class="relative flex-shrink-0">
                                 <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                                    <?php
-                                    $receiverNameParts = explode(' ', trim($_SESSION['receiver']['name']));
-                                    $receiverInitials = strtoupper(substr($receiverNameParts[0], 0, 1) . (isset($receiverNameParts[1]) ? substr($receiverNameParts[1], 0, 1) : ''));
-                                    ?>
                                     <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
                                 </div>
                                 <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
@@ -348,76 +192,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <!-- Messages Container -->
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
-                        <?php foreach ($messages as $m) : ?>
-                            <?php if ($m['sender_id'] == $_SESSION['user']['id']) : ?>
-                                <!-- Sent Message -->
-                                <div class="flex items-start gap-2 md:gap-3 justify-end message-group" data-message-id="<?= $m['id'] ?>">
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <!-- Three dots button -->
-                                        <button onclick="toggleMessageMenu(event, <?= $m['id'] ?>)" class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                        </button>
-
-                                        <!-- Dropdown Menu -->
-                                        <div id="messageMenu-<?= $m['id'] ?>" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="editMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-edit text-blue-400"></i>
-                                                <span>Tahrirlash</span>
-                                            </button>
-                                            <button onclick="copyMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i>
-                                                <span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i>
-                                                <span>O'chirish</span>
-                                            </button>
-                                        </div>
-
-                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
-                                        </div>
-                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
-                                            <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
-                                        </p>
-                                    </div>
-                                </div>
-                            <?php else : ?>
-                                <!-- Received Message -->
-                                <div class="flex items-start gap-2 md:gap-3 message-group" data-message-id="<?= $m['id'] ?>">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <span class="text-xs font-bold text-white"><?= $receiverInitials ?></span>
-                                    </div>
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm"><?= htmlspecialchars($m['message']) ?></p>
-                                        </div>
-
-                                        <!-- Three dots button -->
-                                        <button onclick="toggleMessageMenu(event, <?= $m['id'] ?>)" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                        </button>
-
-                                        <!-- Dropdown Menu -->
-                                        <div id="messageMenu-<?= $m['id'] ?>" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="copyMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i>
-                                                <span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(<?= $m['id'] ?>)" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i>
-                                                <span>O'chirish</span>
-                                            </button>
-                                        </div>
-
-                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">
-                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
-                                        </p>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+                        <!--  -->
                     </div>
 
                     <!-- Message Input -->
@@ -659,6 +434,98 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 closeLogoutModal();
             }
         });
+
+        function loadMessages() {
+            let messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = ''
+            const formData = new FormData();
+            formData.append('id', <?= (int)$_GET['id'] ?>);
+            let user_id = <?= (int)$_SESSION['user']['id'] ?>
+
+            fetch('get_messages.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    data.data.forEach(message => {
+                        if (user_id === message.sender_id) {
+                            messagesContainer.innerHTML += `
+                            <div class="flex items-start gap-2 md:gap-3 justify-end message-group" data-message-id="${message.id}">
+                                    <div class="max-w-[75%] md:max-w-md relative">
+                                        <!-- Three dots button -->
+                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu -->
+                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-edit text-blue-400"></i>
+                                                <span>Tahrirlash</span>
+                                            </button>
+                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i>
+                                                <span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i>
+                                                <span>O'chirish</span>
+                                            </button>
+                                        </div>
+
+                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm">${message.message}</p>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
+                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
+                                            <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
+                                        </p>
+                                    </div>
+                                </div>
+                            `
+                        } else {
+                            messagesContainer.innerHTML += `
+                           <div class="flex items-start gap-2 md:gap-3 message-group" data-message-id="${message.id}">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs font-bold text-white"><?= $receiverInitials ?></span>
+                                    </div>
+                                    <div class="max-w-[75%] md:max-w-md relative">
+                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm">${message.id})</p>
+                                        </div>
+
+                                        <!-- Three dots button -->
+                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu -->
+                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i>
+                                                <span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i>
+                                                <span>O'chirish</span>
+                                            </button>
+                                        </div>
+
+                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">
+                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            `
+                        }
+                    })
+
+
+                })
+        }
+
+        loadMessages()
     </script>
 </body>
 

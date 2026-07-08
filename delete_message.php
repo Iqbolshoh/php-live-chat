@@ -3,7 +3,10 @@ session_start();
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    echo json_encode(['success' => false, 'message' => 'Avval tizimga kiring']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Avval tizimga kiring'
+    ]);
     exit;
 }
 

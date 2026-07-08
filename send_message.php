@@ -1,14 +1,11 @@
 <?php
-// send_message.php
 session_start();
-
 header('Content-Type: application/json');
 
-// Check if user is authenticated
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     echo json_encode([
         'success' => false,
-        'message' => 'Iltimos, avval tizimga kiring.'
+        'message' => 'Avval tizimga kiring'
     ]);
     exit;
 }
