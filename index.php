@@ -325,13 +325,26 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         const userId = <?= (int)$_SESSION['user']['id'] ?>;
         const receiverInitials = '<?= $receiverInitials ?>';
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const STANDARD_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+        const EMOJI_PICKER_LIST = [
+            '😀', '😁', '😂', '🤣', '😊', '😍', '😘', '😜', '🤔', '😎', '😴', '😢',
+            '😭', '😡', '😱', '🥳', '👍', '👎', '👏', '🙏', '💪', '🤝', '✌️', '🤞',
+            '👌', '🤙', '💯', '🔥', '✨', '🎉', '❤️', '💔', '💕', '😇', '🙄', '😅',
+            '😉', '🤗', '😋', '😏', '🤩', '🥰', '😐', '😬', '🤯', '🥺', '😷', '🤒'
+        ];
+        const MAX_RECORDING_MS = 60 * 1000;
+
         let messagesLoaded = false;
         let isUserScrolling = false;
-
-        // Tracks messages already in the DOM (id -> {message, status}) so polling
-        // only touches what actually changed instead of replacing the whole list.
-        const renderedMessages = new Map();
         let lastContactsData = '';
+        let messagesPollId = null;
+        let contactsPollId = null;
+
+        // Tracks messages already in the DOM (id -> {data, signature, node}) so
+        // polling only patches what actually changed instead of replacing the
+        // whole list — this is what stops the container from resetting scroll
+        // and "shaking" on every refresh.
+        const renderedMessages = new Map();
 
         // Monitor scroll event to check if user is reading old messages
         document.addEventListener('DOMContentLoaded', function() {
@@ -344,9 +357,35 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         });
 
+        // ============ Escaping Helpers ============
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeAttribute(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function formatTime(dateString) {
+            if (!dateString) return 'Hozir';
+            const date = new Date(dateString);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
         // ============ Message Menu Functions ============
         function toggleMessageMenu(event, messageId) {
             event.stopPropagation();
+            document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.add('hidden'));
             document.querySelectorAll('.message-dropdown').forEach(dropdown => {
                 if (dropdown.id !== `messageMenu-${messageId}`) {
                     dropdown.classList.add('hidden');
@@ -356,85 +395,163 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (dropdown) dropdown.classList.toggle('hidden');
         }
 
+        function toggleReactionPicker(event, messageId) {
+            event.stopPropagation();
+            document.querySelectorAll('.message-dropdown').forEach(dropdown => dropdown.classList.add('hidden'));
+            document.querySelectorAll('.reaction-picker').forEach(picker => {
+                if (picker.id !== `reactionPicker-${messageId}`) {
+                    picker.classList.add('hidden');
+                }
+            });
+            const picker = document.getElementById(`reactionPicker-${messageId}`);
+            if (picker) picker.classList.toggle('hidden');
+        }
+
         document.addEventListener('click', function(event) {
             if (!event.target.closest('.message-menu-btn') && !event.target.closest('.message-dropdown')) {
                 document.querySelectorAll('.message-dropdown').forEach(dropdown => {
                     dropdown.classList.add('hidden');
                 });
             }
+            if (!event.target.closest('.message-menu-btn') && !event.target.closest('.reaction-picker')) {
+                document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.add('hidden'));
+            }
+            if (!event.target.closest('#emojiBtn') && !event.target.closest('#emojiPicker')) {
+                const emojiPicker = document.getElementById('emojiPicker');
+                if (emojiPicker) emojiPicker.classList.add('hidden');
+            }
         });
 
         function editMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
             const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
-            if (messageGroup) {
-                const messageText = messageGroup.querySelector('.message-sent p, .message-received p').textContent;
-                const newMessage = prompt('Xabarni tahrirlash:', messageText);
-                if (newMessage && newMessage !== messageText) {
-                    updateMessage(messageId, newMessage);
-                }
+            if (!messageGroup || messageGroup.dataset.type !== 'text') return;
+            const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
+            if (!messageP) return;
+            const messageText = messageP.textContent;
+            const newMessage = prompt('Xabarni tahrirlash:', messageText);
+            if (newMessage && newMessage.trim() && newMessage.trim() !== messageText) {
+                updateMessage(messageId, newMessage.trim());
             }
         }
 
         function copyMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
             const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
-            if (messageGroup) {
-                const messageText = messageGroup.querySelector('.message-sent p, .message-received p').textContent;
-                navigator.clipboard.writeText(messageText).then(() => {
-                    showNotification('Xabar nusxalandi!', 'success');
-                }).catch(() => {
-                    showNotification('Nusxalashda xatolik!', 'error');
-                });
-            }
+            if (!messageGroup) return;
+            const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
+            if (!messageP) return;
+            const messageText = messageP.textContent;
+            navigator.clipboard.writeText(messageText).then(() => {
+                showNotification('Xabar nusxalandi!', 'success');
+            }).catch(() => {
+                showNotification('Nusxalashda xatolik!', 'error');
+            });
         }
 
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-            if (confirm('Xabarni o\'chirishni istaysizmi?')) {
-                const formData = new FormData();
-                formData.append('message_id', messageId);
-                formData.append('csrf_token', csrfToken);
+            if (!confirm('Xabarni o\'chirishni istaysizmi?')) return;
 
-                fetch('delete_message.php', { method: 'POST', body: formData })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
-                            if (messageGroup) {
-                                messageGroup.style.transition = 'all 0.3s ease';
-                                messageGroup.style.opacity = '0';
-                                messageGroup.style.transform = 'scale(0.8)';
-                                setTimeout(() => messageGroup.remove(), 300);
-                            }
-                            showNotification('Xabar o\'chirildi!', 'success');
-                        } else {
-                            showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            formData.append('csrf_token', csrfToken);
+
+            fetch('delete_message.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+                        if (messageGroup) {
+                            messageGroup.style.transition = 'all 0.3s ease';
+                            messageGroup.style.opacity = '0';
+                            messageGroup.style.transform = 'scale(0.8)';
+                            setTimeout(() => messageGroup.remove(), 300);
                         }
-                    });
-            }
+                        renderedMessages.delete(Number(messageId));
+                        showNotification('Xabar o\'chirildi!', 'success');
+                    } else {
+                        showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                    }
+                });
         }
 
         async function updateMessage(messageId, newMessage) {
             const formData = new FormData();
             formData.append('message_id', messageId);
             formData.append('message', newMessage);
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('update_message.php', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success) {
-                    const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
-                    if (messageGroup) {
-                        const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
-                        if (messageP) messageP.textContent = newMessage;
-                    }
                     showNotification('Xabar yangilandi!', 'success');
+                    loadMessages();
                 } else {
                     showNotification(data.message || 'Xatolik yuz berdi.', 'error');
                 }
             } catch (error) {
                 console.error('Update message error:', error);
+                showNotification('Xatolik yuz berdi.', 'error');
+            }
+        }
+
+        // ============ Reactions ============
+        function groupReactions(reactions) {
+            const groups = new Map();
+            (reactions || []).forEach(reaction => {
+                if (!groups.has(reaction.emoji)) groups.set(reaction.emoji, []);
+                groups.get(reaction.emoji).push(reaction);
+            });
+            return groups;
+        }
+
+        function buildReactionsHTML(message) {
+            const groups = groupReactions(message.reactions);
+            if (groups.size === 0) return '';
+
+            let html = '<div class="flex flex-wrap gap-1 mt-1">';
+            groups.forEach((reactors, emoji) => {
+                const reactedByMe = reactors.some(reactor => reactor.user_id === userId);
+                const names = reactors.map(reactor => reactor.user_name).join(', ');
+                html += `<button type="button" onclick="reactToMessage(${message.id}, '${emoji}')" title="${escapeAttribute(names)}" class="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${reactedByMe ? 'bg-blue-500/30 border border-blue-400/50' : 'bg-slate-700/60 border border-transparent hover:border-gray-500'}">
+                    <span>${emoji}</span><span class="text-gray-300">${reactors.length}</span>
+                </button>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function buildReactionPickerHTML(messageId) {
+            return STANDARD_REACTIONS.map(emoji =>
+                `<button type="button" onclick="reactToMessage(${messageId}, '${emoji}')" class="text-lg hover:scale-125 transition-transform">${emoji}</button>`
+            ).join('');
+        }
+
+        async function reactToMessage(messageId, emoji) {
+            document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.add('hidden'));
+
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            formData.append('emoji', emoji);
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('react_message.php', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    const cached = renderedMessages.get(Number(messageId));
+                    if (cached) {
+                        cached.data.reactions = data.data;
+                        cached.signature = messageSignature(cached.data);
+                        patchMessageNode(cached.node, cached.data);
+                    }
+                } else {
+                    showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                }
+            } catch (error) {
+                console.error('React error:', error);
                 showNotification('Xatolik yuz berdi.', 'error');
             }
         }
