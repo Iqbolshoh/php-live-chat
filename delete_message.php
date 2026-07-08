@@ -11,14 +11,12 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Noto\'g\'ri so\'rov']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Noto\'g\'ri so\'rov'
+    ]);
     exit;
 }
-
-// if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-//     echo json_encode(['success' => false, 'message' => 'Xavfsizlik tokeni noto\'g\'ri']);
-//     exit;
-// }
 
 $message_id = (int)$_POST['message_id'];
 
@@ -42,7 +40,13 @@ if (empty($message)) {
 $deleted = $db->delete('messages', 'id = ?', [$message_id]);
 
 if ($deleted) {
-    echo json_encode(['success' => true, 'message' => 'Xabar o\'chirildi']);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Xabar o\'chirildi'
+    ]);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Xatolik yuz berdi']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xatolik yuz berdi'
+    ]);
 }

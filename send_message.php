@@ -96,21 +96,18 @@ try {
     $insertId = $db->insert('messages', $insertData);
 
     if ($insertId) {
-        // Return success response with message data
-        // echo json_encode([
-        //     'success' => true,
-        //     'message' => 'Xabar muvaffaqiyatli yuborildi.',
-        //     'data' => [
-        //         'id' => $insertId,
-        //         'sender_id' => $sender_id,
-        //         'receiver_id' => $receiver_id,
-        //         'message' => htmlspecialchars($message),
-        //         'status' => 'sent',
-        //         'created_at' => date('Y-m-d H:i:s')
-        //     ]
-        // ]);
-
-        header('Location: index.php?id=' . $receiver_id);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Xabar muvaffaqiyatli yuborildi.',
+            'data' => [
+                'id' => $insertId,
+                'sender_id' => $sender_id,
+                'receiver_id' => $receiver_id,
+                'message' => htmlspecialchars($message),
+                'status' => 'sent',
+                'created_at' => date('Y-m-d H:i:s')
+            ]
+        ]);
         exit;
     } else {
         echo json_encode([

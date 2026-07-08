@@ -17,6 +17,8 @@ $db = new Database();
 
 $contacts = $db->select('users', '*', 'id != ?', [$_SESSION['user']['id']]);
 
+$receiverInitials = '';
+
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $_SESSION['receiver']['id'] = $_GET['id'];
     $_SESSION['receiver']['name'] = $db->select('users', 'name', 'id = ?', [$_GET['id']])[0]['name'];
@@ -44,7 +46,186 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             darkMode: 'class',
         }
     </script>
-    <link rel="stylesheet" href="./src/styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background-attachment: fixed;
+            height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-sent {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .message-received {
+            background: rgba(51, 65, 85, 0.8);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .user-card:hover {
+            transform: translateX(4px);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .user-card.active {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transform: translateX(4px);
+        }
+
+        .chat-window {
+            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 40;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebar-panel {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .empty-state {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .logout-modal {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Message menu styles */
+        .message-menu-btn {
+            opacity: 0;
+            visibility: visible;
+            transition: all 0.2s ease;
+        }
+
+        .message-group:hover .message-menu-btn {
+            opacity: 1 !important;
+        }
+
+        .message-group:hover .message-menu-btn:hover {
+            background: rgba(71, 85, 105, 0.9) !important;
+            transform: scale(1.1);
+        }
+
+        .message-dropdown {
+            animation: fadeIn 0.2s ease-out;
+            transform-origin: top right;
+        }
+
+        /* Sent message dropdown position */
+        .justify-end .message-dropdown {
+            transform-origin: top left;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-panel {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 320px;
+                z-index: 50;
+                transform: translateX(-100%);
+            }
+
+            .sidebar-panel.active {
+                transform: translateX(0);
+            }
+        }
+    </style>
 </head>
 
 <body class="text-gray-200 antialiased">
@@ -192,12 +373,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <!-- Messages Container -->
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
-                        <!--  -->
+                        <!-- Messages will be loaded here dynamically -->
                     </div>
 
                     <!-- Message Input -->
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
-                        <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST">
+                        <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST" id="messageForm">
                             <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
                                 <i class="fas fa-paperclip text-gray-400"></i>
                             </button>
@@ -253,7 +434,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     </form>
 
     <script>
-        // Toggle message menu
+        // ============ Global Variables ============
+        const receiverId = <?= isset($_GET['id']) ? (int)$_GET['id'] : 'null' ?>;
+        const userId = <?= (int)$_SESSION['user']['id'] ?>;
+        const receiverInitials = '<?= $receiverInitials ?>';
+        let messagesLoaded = false;
+
+        // ============ Message Menu Functions ============
         function toggleMessageMenu(event, messageId) {
             event.stopPropagation();
 
@@ -266,7 +453,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
             // Toggle current dropdown
             const dropdown = document.getElementById(`messageMenu-${messageId}`);
-            dropdown.classList.toggle('hidden');
+            if (dropdown) {
+                dropdown.classList.toggle('hidden');
+            }
         }
 
         // Close dropdowns when clicking outside
@@ -278,71 +467,117 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         });
 
-        // Hover effect for message groups
-        document.addEventListener('DOMContentLoaded', function() {
-            const messageGroups = document.querySelectorAll('.message-group');
-
-            messageGroups.forEach(group => {
-                group.addEventListener('mouseenter', function() {
-                    const menuBtn = this.querySelector('.message-menu-btn');
-                    if (menuBtn) {
-                        menuBtn.style.opacity = '1';
-                    }
-                });
-
-                group.addEventListener('mouseleave', function() {
-                    const menuBtn = this.querySelector('.message-menu-btn');
-                    if (menuBtn) {
-                        menuBtn.style.opacity = '0';
-                    }
-                });
-            });
-        });
-
-        // Example functions (siz to'ldirasiz)
         function editMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-            console.log('Edit message:', messageId);
-            // Sizning kodingiz...
+            const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+            if (messageGroup) {
+                const messageText = messageGroup.querySelector('.message-sent p, .message-received p').textContent;
+                const newMessage = prompt('Xabarni tahrirlash:', messageText);
+                if (newMessage && newMessage !== messageText) {
+                    updateMessage(messageId, newMessage);
+                }
+            }
         }
 
         function copyMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-            console.log('Copy message:', messageId);
-            // Sizning kodingiz...
+            const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+            if (messageGroup) {
+                const messageText = messageGroup.querySelector('.message-sent p, .message-received p').textContent;
+                navigator.clipboard.writeText(messageText).then(() => {
+                    // Show brief success notification
+                    showNotification('Xabar nusxalandi!', 'success');
+                }).catch(() => {
+                    showNotification('Nusxalashda xatolik!', 'error');
+                });
+            }
         }
 
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
 
-            // FormData yaratish
-            const formData = new FormData();
-            formData.append('message_id', messageId);
-            // CSRF tokenni to'g'ridan-to'g'ri PHP'dan olish
-            formData.append('csrf_token', '<?php echo $_SESSION["csrf_token"]; ?>');
+            if (confirm('Xabarni o\'chirishni istaysizmi?')) {
+                const formData = new FormData();
+                formData.append('message_id', messageId);
 
-            fetch('delete_message.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
-                        if (messageGroup) {
-                            messageGroup.remove();
+                fetch('delete_message.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+                            if (messageGroup) {
+                                messageGroup.style.transition = 'all 0.3s ease';
+                                messageGroup.style.opacity = '0';
+                                messageGroup.style.transform = 'scale(0.8)';
+                                setTimeout(() => {
+                                    messageGroup.remove();
+                                }, 300);
+                            }
+                            showNotification('Xabar o\'chirildi!', 'success');
+                        } else {
+                            showNotification(data.message || 'Xatolik yuz berdi.', 'error');
                         }
-                    } else {
-                        alert(data.message || 'Xatolik yuz berdi.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Delete message error:', error);
-                    alert('Xatolik yuz berdi.');
-                });
+                    })
+            }
         }
 
-        // Toggle sidebar for mobile
+        async function updateMessage(messageId, newMessage) {
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            formData.append('message', newMessage);
+
+            try {
+                const response = await fetch('update_message.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
+                    if (messageGroup) {
+                        const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
+                        if (messageP) {
+                            messageP.textContent = newMessage;
+                        }
+                    }
+                    showNotification('Xabar yangilandi!', 'success');
+                } else {
+                    showNotification(data.message || 'Xatolik yuz berdi.', 'error');
+                }
+            } catch (error) {
+                console.error('Update message error:', error);
+                showNotification('Xatolik yuz berdi.', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg z-50 transition-all`;
+            notification.style.animation = 'fadeIn 0.3s ease-out';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, 20px)';
+                notification.style.transition = 'all 0.3s ease';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 2000);
+        }
+
+        // ============ Sidebar Functions ============
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -351,42 +586,20 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             overlay.classList.toggle('active');
         }
 
-        // Close chat and return to empty state
         function closeChat() {
             window.location.href = window.location.pathname;
         }
 
-        // Open logout modal
+        // ============ Logout Functions ============
         function openLogoutModal() {
             const modal = document.getElementById('logoutModal');
             modal.classList.remove('hidden');
         }
 
-        // Close logout modal
         function closeLogoutModal() {
             const modal = document.getElementById('logoutModal');
             modal.classList.add('hidden');
         }
-
-        // Auto-resize textarea
-        const textarea = document.getElementById('messageInput');
-        if (textarea) {
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            });
-        }
-
-        // Scroll messages to bottom
-        function scrollToBottom() {
-            const container = document.getElementById('messagesContainer');
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
-
-        // Initial scroll to bottom
-        scrollToBottom();
 
         async function performLogout() {
             const logoutBtn = document.getElementById('logoutBtn');
@@ -415,7 +628,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     if (data.success) {
                         window.location.href = 'login/';
                     } else {
-                        alert(data.message || 'Xatolik yuz berdi.');
+                        showNotification(data.message || 'Xatolik yuz berdi.', 'error');
                         logoutBtn.innerHTML = originalHTML;
                         logoutBtn.disabled = false;
                     }
@@ -428,19 +641,32 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeLogoutModal();
-            }
-        });
+        // ============ Message Loading ============
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(dateString) {
+            if (!dateString) return 'Hozir';
+            const date = new Date(dateString);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
 
         function loadMessages() {
-            let messagesContainer = document.getElementById('messagesContainer');
-            messagesContainer.innerHTML = ''
+            if (!receiverId) return;
+
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return;
+
+            messagesContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+
             const formData = new FormData();
-            formData.append('id', <?= (int)$_GET['id'] ?>);
-            let user_id = <?= (int)$_SESSION['user']['id'] ?>
+            formData.append('id', receiverId);
 
             fetch('get_messages.php', {
                     method: 'POST',
@@ -448,84 +674,261 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    messagesContainer.innerHTML = '';
+
+                    if (!data.data || data.data.length === 0) {
+                        messagesContainer.innerHTML = `
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center text-gray-500">
+                                    <i class="fas fa-comments text-4xl mb-3"></i>
+                                    <p>Hali xabarlar yo'q</p>
+                                    <p class="text-sm">Birinchi xabarni yuboring!</p>
+                                </div>
+                            </div>`;
+                        return;
+                    }
+
                     data.data.forEach(message => {
-                        if (user_id === message.sender_id) {
+                        const time = formatTime(message.created_at);
+
+                        if (userId === message.sender_id) {
+                            // Sent message
                             messagesContainer.innerHTML += `
-                            <div class="flex items-start gap-2 md:gap-3 justify-end message-group" data-message-id="${message.id}">
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <!-- Three dots button -->
-                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                            <div class="flex items-start gap-2 md:gap-3 justify-end message-group group" data-message-id="${message.id}">
+                                <div class="max-w-[75%] md:max-w-md relative">
+                                    <!-- Three dots button -->
+                                    <button onclick="toggleMessageMenu(event, ${message.id})" 
+                                            class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
+                                        <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                    </button>
+
+                                    <!-- Dropdown Menu -->
+                                    <div id="messageMenu-${message.id}" 
+                                         class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                        <button onclick="editMessage(${message.id})" 
+                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                            <i class="fas fa-edit text-blue-400"></i>
+                                            <span>Tahrirlash</span>
                                         </button>
-
-                                        <!-- Dropdown Menu -->
-                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-edit text-blue-400"></i>
-                                                <span>Tahrirlash</span>
-                                            </button>
-                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i>
-                                                <span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i>
-                                                <span>O'chirish</span>
-                                            </button>
-                                        </div>
-
-                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm">${message.message}</p>
-                                        </div>
-                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
-                                            <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
-                                        </p>
+                                        <button onclick="copyMessage(${message.id})" 
+                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                            <i class="fas fa-copy text-green-400"></i>
+                                            <span>Nusxalash</span>
+                                        </button>
+                                        <button onclick="deleteMessage(${message.id})" 
+                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span>O'chirish</span>
+                                        </button>
                                     </div>
+
+                                    <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
+                                        <p class="text-sm">${escapeHtml(message.message)}</p>
+                                    </div>
+                                    <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
+                                        ${time}
+                                        <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
+                                    </p>
                                 </div>
-                            `
+                            </div>`;
                         } else {
+                            // Received message
                             messagesContainer.innerHTML += `
-                           <div class="flex items-start gap-2 md:gap-3 message-group" data-message-id="${message.id}">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <span class="text-xs font-bold text-white"><?= $receiverInitials ?></span>
-                                    </div>
-                                    <div class="max-w-[75%] md:max-w-md relative">
-                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                            <p class="text-sm">${message.id})</p>
-                                        </div>
-
-                                        <!-- Three dots button -->
-                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10">
-                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                        </button>
-
-                                        <!-- Dropdown Menu -->
-                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                                <i class="fas fa-copy text-green-400"></i>
-                                                <span>Nusxalash</span>
-                                            </button>
-                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                                <i class="fas fa-trash-alt"></i>
-                                                <span>O'chirish</span>
-                                            </button>
-                                        </div>
-
-                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">
-                                            <?= date('H:i', strtotime($m['created_at'] ?? 'now')) ?>
-                                        </p>
-                                    </div>
+                            <div class="flex items-start gap-2 md:gap-3 message-group group" data-message-id="${message.id}">
+                                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span class="text-xs font-bold text-white">${receiverInitials}</span>
                                 </div>
-                            `
+                                <div class="max-w-[75%] md:max-w-md relative">
+                                    <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
+                                        <p class="text-sm">${escapeHtml(message.message)}</p>
+                                    </div>
+
+                                    <!-- Three dots button -->
+                                    <button onclick="toggleMessageMenu(event, ${message.id})" 
+                                            class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
+                                        <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                    </button>
+
+                                    <!-- Dropdown Menu -->
+                                    <div id="messageMenu-${message.id}" 
+                                         class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                        <button onclick="copyMessage(${message.id})" 
+                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                            <i class="fas fa-copy text-green-400"></i>
+                                            <span>Nusxalash</span>
+                                        </button>
+                                        <button onclick="deleteMessage(${message.id})" 
+                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span>O'chirish</span>
+                                        </button>
+                                    </div>
+
+                                    <p class="text-[10px] text-gray-500 mt-1 ml-1">${time}</p>
+                                </div>
+                            </div>`;
                         }
-                    })
+                    });
 
-
+                    // Scroll to bottom after loading messages
+                    scrollToBottom();
+                    messagesLoaded = true;
                 })
+                .catch(error => {
+                    console.error('Xabarlarni yuklashda xatolik:', error);
+                    messagesContainer.innerHTML = `
+                        <div class="flex items-center justify-center h-full">
+                            <div class="text-center text-red-400">
+                                <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                                <p>Xabarlarni yuklashda xatolik yuz berdi</p>
+                                <button onclick="loadMessages()" class="mt-3 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-colors">
+                                    <i class="fas fa-redo mr-2"></i>Qayta urinish
+                                </button>
+                            </div>
+                        </div>`;
+                });
         }
 
-        loadMessages()
+        // ============ UI Functions ============
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            if (container) {
+                setTimeout(() => {
+                    container.scrollTop = container.scrollHeight;
+                }, 100);
+            }
+        }
+
+        // Auto-resize textarea
+        function setupTextarea() {
+            const textarea = document.getElementById('messageInput');
+            if (textarea) {
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+                });
+
+                // Send message on Enter (Shift+Enter for new line)
+                textarea.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        document.getElementById('messageForm').dispatchEvent(new Event('submit'));
+                    }
+                });
+            }
+        }
+
+        // Handle message form submission
+        function setupMessageForm() {
+            const form = document.getElementById('messageForm');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const messageInput = document.getElementById('messageInput');
+                    const message = messageInput.value.trim();
+
+                    if (!message) return;
+
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const originalHTML = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-white text-xs"></i>';
+                    submitBtn.disabled = true;
+
+                    try {
+                        const formData = new FormData(form);
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            messageInput.value = '';
+                            messageInput.style.height = 'auto';
+                            loadMessages(); // Reload messages
+                        } else {
+                            showNotification(data.message || 'Xabar yuborishda xatolik!', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Send message error:', error);
+                        showNotification('Xatolik yuz berdi!', 'error');
+                    } finally {
+                        submitBtn.innerHTML = originalHTML;
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+        }
+
+        // ============ Keyboard Shortcuts ============
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLogoutModal();
+                // Close any open message dropdowns
+                document.querySelectorAll('.message-dropdown').forEach(dropdown => {
+                    dropdown.classList.add('hidden');
+                });
+            }
+
+            // Ctrl+Enter to send message
+            if (e.ctrlKey && e.key === 'Enter') {
+                const messageForm = document.getElementById('messageForm');
+                if (messageForm) {
+                    messageForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+
+        // ============ Initialize ============
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load messages if we're in a chat
+            if (receiverId) {
+                loadMessages();
+                // Refresh messages every 3 seconds
+                setInterval(loadMessages, 3000);
+            }
+
+            setupTextarea();
+            setupMessageForm();
+
+            // Add hover effect for message groups
+            document.addEventListener('mouseover', function(e) {
+                const messageGroup = e.target.closest('.message-group');
+                if (messageGroup) {
+                    const menuBtn = messageGroup.querySelector('.message-menu-btn');
+                    if (menuBtn) {
+                        menuBtn.style.opacity = '1';
+                    }
+                }
+            });
+
+            document.addEventListener('mouseout', function(e) {
+                const messageGroup = e.target.closest('.message-group');
+                if (messageGroup) {
+                    const menuBtn = messageGroup.querySelector('.message-menu-btn');
+                    const dropdown = messageGroup.querySelector('.message-dropdown');
+                    // Don't hide if dropdown is open
+                    if (menuBtn && (!dropdown || dropdown.classList.contains('hidden'))) {
+                        menuBtn.style.opacity = '0';
+                    }
+                }
+            });
+        });
+
+        // Handle window resize for responsive sidebar
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (sidebar) {
+                    sidebar.classList.remove('active');
+                }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                }
+            }
+        });
     </script>
 </body>
 
