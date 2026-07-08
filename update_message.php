@@ -18,11 +18,44 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validate CSRF token
+if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xavfsizlik tokeni noto\'g\'ri.'
+    ]);
+    exit;
+}
+
 $message_id = (int)$_POST['message_id'];
-$new_message = $_POST['message'];
+$new_message = trim($_POST['message'] ?? '');
+
+if (empty($new_message)) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xabar matni bo\'sh bo\'lishi mumkin emas.'
+    ]);
+    exit;
+}
+
+if (strlen($new_message) > 5000) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xabar juda uzun. Maksimum 5000 ta belgi.'
+    ]);
+    exit;
+}
 
 include 'db.php';
 $db = new Database();
+
+// Only the original sender may edit their own message
+$message = $db->select('messages', '*', 'id = ? AND sender_id = ?', [$message_id, $_SESSION['user']['id']]);
+
+if (empty($message)) {
+    echo json_encode(['success' => false, 'message' => 'Xabar topilmadi!']);
+    exit;
+}
 
 $updated = $db->update(
     'messages',

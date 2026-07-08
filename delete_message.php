@@ -18,6 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validate CSRF token
+if (!isset($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Xavfsizlik tokeni noto\'g\'ri.'
+    ]);
+    exit;
+}
+
 $message_id = (int)$_POST['message_id'];
 
 include 'db.php';

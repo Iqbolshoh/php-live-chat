@@ -165,7 +165,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-3 space-y-1">
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-3 space-y-1" id="contactsList">
                 <?php foreach ($contacts as $contact) : ?>
                     <?php
                     $nameParts = explode(' ', trim($contact['name']));
@@ -200,18 +200,20 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
             <div class="p-3 md:p-4 border-t border-gray-700/30">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center">
-                        <span class="font-bold text-white text-sm">
-                            <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
-                        </span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm truncate">
-                            <?php echo isset($_SESSION['user']['email']) ? htmlspecialchars($_SESSION['user']['email']) : 'User'; ?>
-                        </p>
-                        <p class="text-xs text-gray-400">Mening profilim</p>
-                    </div>
-                    <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group" title="Chiqish">
+                    <a href="profile.php" class="flex items-center gap-3 flex-1 min-w-0 hover:no-underline group/profile">
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="font-bold text-white text-sm">
+                                <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate group-hover/profile:text-blue-400 transition-colors">
+                                <?php echo isset($_SESSION['user']['email']) ? htmlspecialchars($_SESSION['user']['email']) : 'User'; ?>
+                            </p>
+                            <p class="text-xs text-gray-400">Mening profilim</p>
+                        </div>
+                    </a>
+                    <button onclick="openLogoutModal()" class="w-8 h-8 rounded-lg hover:bg-red-500/20 flex items-center justify-center transition-colors group flex-shrink-0" title="Chiqish">
                         <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                     </button>
                 </div>
@@ -241,12 +243,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             </div>
                         </div>
                         <div class="flex gap-1 md:gap-2">
-                            <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors">
-                                <i class="fas fa-phone text-gray-400"></i>
-                            </button>
-                            <button class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors hidden sm:flex">
-                                <i class="fas fa-video text-gray-400"></i>
-                            </button>
                             <button onclick="openLogoutModal()" class="w-10 h-10 rounded-xl hover:bg-red-500/20 flex items-center justify-center transition-colors group">
                                 <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-400 text-sm transition-colors"></i>
                             </button>
@@ -257,9 +253,21 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         </div>
 
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
+                        <div id="recordingBar" class="hidden items-center gap-3 mb-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse-dot"></span>
+                            <span class="text-sm text-red-400 flex-1">Ovozli xabar yozilmoqda... <span id="recordingTime">00:00</span></span>
+                            <button type="button" onclick="cancelRecording()" class="text-xs text-gray-400 hover:text-white transition-colors">Bekor qilish</button>
+                            <button type="button" onclick="stopRecording()" class="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors">
+                                <i class="fas fa-stop text-white text-xs"></i>
+                            </button>
+                        </div>
                         <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST" id="messageForm">
-                            <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
+                            <input type="file" id="attachmentInput" accept="image/*" class="hidden">
+                            <button type="button" id="attachBtn" onclick="document.getElementById('attachmentInput').click()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" title="Rasm yuborish (5 MB gacha)">
                                 <i class="fas fa-paperclip text-gray-400"></i>
+                            </button>
+                            <button type="button" id="micBtn" onclick="toggleRecording()" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0" title="Ovozli xabar (1 daqiqagacha)">
+                                <i class="fas fa-microphone text-gray-400"></i>
                             </button>
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                             <input type="hidden" name="receiver_id" value="<?= htmlspecialchars($_SESSION['receiver']['id']) ?>">
@@ -274,9 +282,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                     <i class="fas fa-paper-plane text-white text-xs"></i>
                                 </button>
                             </div>
-                            <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0 hidden sm:flex">
-                                <i class="fas fa-smile text-gray-400"></i>
-                            </button>
                         </form>
                     </div>
                 </div>
@@ -315,11 +320,14 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         const receiverId = <?= isset($_GET['id']) ? (int)$_GET['id'] : 'null' ?>;
         const userId = <?= (int)$_SESSION['user']['id'] ?>;
         const receiverInitials = '<?= $receiverInitials ?>';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         let messagesLoaded = false;
-        
-        // Cache variables to prevent flickering
-        let lastMessagesData = ''; 
         let isUserScrolling = false;
+
+        // Tracks messages already in the DOM (id -> {message, status}) so polling
+        // only touches what actually changed instead of replacing the whole list.
+        const renderedMessages = new Map();
+        let lastContactsData = '';
 
         // Monitor scroll event to check if user is reading old messages
         document.addEventListener('DOMContentLoaded', function() {
@@ -382,6 +390,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (confirm('Xabarni o\'chirishni istaysizmi?')) {
                 const formData = new FormData();
                 formData.append('message_id', messageId);
+                formData.append('csrf_token', csrfToken);
 
                 fetch('delete_message.php', { method: 'POST', body: formData })
                     .then(response => response.json())

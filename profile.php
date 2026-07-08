@@ -98,8 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile</title>
+    <title>SocialChat - Profil</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -124,13 +125,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="min-h-screen text-gray-200 p-6 flex flex-col items-center justify-center">
 
     <div class="w-full max-w-2xl">
-        <!-- Back Button -->
-        <a href="./" class="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            Back to Dashboard
-        </a>
+        <!-- App Header (consistent with main chat page) -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-comment-dots text-white text-sm"></i>
+                </div>
+                <h2 class="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    SocialChat
+                </h2>
+            </div>
+            <a href="./" class="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Chatga qaytish
+            </a>
+        </div>
 
         <!-- Profile Card -->
         <div class="glass-panel rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -145,9 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div>
                     <h1 class="text-3xl font-bold text-white mb-1" id="displayNameHeader"><?= htmlspecialchars($currentUser['name']) ?></h1>
                     <p class="text-gray-400"><?= htmlspecialchars($currentUser['email']) ?></p>
-                    <span class="inline-block mt-2 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-semibold uppercase tracking-wider">
-                        <?= htmlspecialchars($currentUser['role']) ?>
-                    </span>
                 </div>
             </div>
 
