@@ -15,10 +15,30 @@ if (empty($_SESSION['csrf_token'])) {
 include 'db.php';
 $db = new Database();
 
-$contacts = $db->select('users', '*', 'id != ?', [$_SESSION['user']['id']]);
+$currentUserId = $_SESSION['user']['id'];
+
+// Fetch users with the latest message date and unread message count using JOIN
+$sql = "
+    SELECT 
+        u.id, 
+        u.name, 
+        u.email,
+        MAX(m.created_at) as last_message_date,
+        SUM(CASE WHEN m.sender_id = u.id AND m.receiver_id = ? AND m.status = 'sent' THEN 1 ELSE 0 END) as unread_count
+    FROM users u
+    LEFT JOIN messages m ON (u.id = m.sender_id AND m.receiver_id = ?) 
+                         OR (u.id = m.receiver_id AND m.sender_id = ?)
+    WHERE u.id != ?
+    GROUP BY u.id, u.name, u.email
+    ORDER BY (MAX(m.created_at) IS NULL) ASC, MAX(m.created_at) DESC
+";
+
+$stmt = $db->execute($sql, [$currentUserId, $currentUserId, $currentUserId, $currentUserId]);
+$contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $receiverInitials = '';
 
+// Check if a chat is selected
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $_SESSION['receiver']['id'] = $_GET['id'];
     $_SESSION['receiver']['name'] = $db->select('users', 'name', 'id = ?', [$_GET['id']])[0]['name'];
@@ -47,12 +67,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
     </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             background-attachment: fixed;
@@ -60,180 +75,50 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         }
-
         .glass-panel {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        .message-sent {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-        }
-
-        .message-received {
-            background: rgba(51, 65, 85, 0.8);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .user-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .user-card:hover {
-            transform: translateX(4px);
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .user-card.active {
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            transform: translateX(4px);
-        }
-
-        .chat-window {
-            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
+        .message-sent { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .message-received { background: rgba(51, 65, 85, 0.8); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .user-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .user-card:hover { transform: translateX(4px); background: rgba(59, 130, 246, 0.1); }
+        .user-card.active { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); transform: translateX(4px); }
+        .chat-window { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .sidebar-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 40;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease-in-out;
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 40;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;
         }
-
-        .sidebar-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .sidebar-panel {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(59, 130, 246, 0.3);
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.5);
-        }
-
-        .pulse-dot {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        .empty-state {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .logout-modal {
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        /* Message menu styles */
-        .message-menu-btn {
-            opacity: 0;
-            visibility: visible;
-            transition: all 0.2s ease;
-        }
-
-        .message-group:hover .message-menu-btn {
-            opacity: 1 !important;
-        }
-
-        .message-group:hover .message-menu-btn:hover {
-            background: rgba(71, 85, 105, 0.9) !important;
-            transform: scale(1.1);
-        }
-
-        .message-dropdown {
-            animation: fadeIn 0.2s ease-out;
-            transform-origin: top right;
-        }
-
-        /* Sent message dropdown position */
-        .justify-end .message-dropdown {
-            transform-origin: top left;
-        }
-
+        .sidebar-overlay.active { opacity: 1; pointer-events: auto; }
+        .sidebar-panel { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.5); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .empty-state { animation: fadeIn 0.5s ease-out; }
+        .logout-modal { animation: fadeIn 0.2s ease-out; }
+        .message-menu-btn { opacity: 0; visibility: visible; transition: all 0.2s ease; }
+        .message-group:hover .message-menu-btn { opacity: 1 !important; }
+        .message-group:hover .message-menu-btn:hover { background: rgba(71, 85, 105, 0.9) !important; transform: scale(1.1); }
+        .message-dropdown { animation: fadeIn 0.2s ease-out; transform-origin: top right; }
+        .justify-end .message-dropdown { transform-origin: top left; }
         @media (max-width: 768px) {
-            .sidebar-panel {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 85%;
-                max-width: 320px;
-                z-index: 50;
-                transform: translateX(-100%);
-            }
-
-            .sidebar-panel.active {
-                transform: translateX(0);
-            }
+            .sidebar-panel { position: fixed; left: 0; top: 0; bottom: 0; width: 85%; max-width: 320px; z-index: 50; transform: translateX(-100%); }
+            .sidebar-panel.active { transform: translateX(0); }
         }
     </style>
 </head>
 
 <body class="text-gray-200 antialiased">
 
-    <!-- Mobile Sidebar Overlay -->
     <div class="sidebar-overlay md:hidden" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- Logout Confirmation Modal -->
     <div class="fixed inset-0 z-[60] flex items-center justify-center hidden" id="logoutModal">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeLogoutModal()"></div>
         <div class="glass-panel rounded-2xl p-6 md:p-8 max-w-sm w-full mx-4 relative z-10 logout-modal">
@@ -258,9 +143,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
     <div class="flex h-screen p-3 md:p-4 gap-3 md:gap-4">
 
-        <!-- Sidebar - Users List -->
         <div class="sidebar-panel glass-panel rounded-2xl md:rounded-3xl flex flex-col flex-shrink-0 shadow-2xl md:relative md:transform-none" id="sidebar">
-            <!-- Sidebar Header -->
             <div class="p-4 md:p-5 border-b border-gray-700/30">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
@@ -276,16 +159,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     </button>
                 </div>
 
-                <!-- Search Bar -->
                 <div class="relative">
                     <input type="text" placeholder="Qidirish..." class="w-full bg-slate-800/50 rounded-xl px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm transition-all">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
                 </div>
             </div>
 
-            <!-- Users List -->
             <div class="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-3 space-y-1">
-                <!-- Contacts -->
                 <?php foreach ($contacts as $contact) : ?>
                     <?php
                     $nameParts = explode(' ', trim($contact['name']));
@@ -293,6 +173,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     $safeName = htmlspecialchars($contact['name'], ENT_QUOTES, 'UTF-8');
                     $userId = $contact['id'];
                     $isActive = (isset($_GET['id']) && $_GET['id'] == $userId) ? 'active' : '';
+                    $unreadCount = (int)$contact['unread_count'];
                     ?>
 
                     <a href="?id=<?= $userId ?>" class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer block hover:no-underline <?= $isActive ?>">
@@ -305,6 +186,11 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between mb-0.5">
                                 <p class="font-semibold text-sm truncate"><?= $safeName ?></p>
+                                <?php if ($unreadCount > 0) : ?>
+                                    <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        <?= $unreadCount ?>
+                                    </span>
+                                <?php endif; ?>
                             </div>
                             <p class="text-xs text-gray-400">Onlayn</p>
                         </div>
@@ -312,7 +198,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 <?php endforeach; ?>
             </div>
 
-            <!-- Sidebar Footer -->
             <div class="p-3 md:p-4 border-t border-gray-700/30">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center">
@@ -333,12 +218,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             </div>
         </div>
 
-        <!-- Main Chat Area -->
         <div class="flex-1 flex flex-col">
             <?php if (isset($_GET['id']) && !empty($_GET['id'])): ?>
-                <!-- Chat Window -->
                 <div class="glass-panel rounded-2xl md:rounded-3xl flex flex-col h-full shadow-2xl chat-window">
-                    <!-- Chat Header -->
                     <div class="p-3 md:p-4 border-b border-gray-700/30 flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <button class="md:hidden w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center flex-shrink-0 transition-colors" onclick="toggleSidebar()">
@@ -371,12 +253,9 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                         </div>
                     </div>
 
-                    <!-- Messages Container -->
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4" id="messagesContainer">
-                        <!-- Messages will be loaded here dynamically -->
-                    </div>
+                        </div>
 
-                    <!-- Message Input -->
                     <div class="p-3 md:p-4 border-t border-gray-700/30">
                         <form class="flex items-end gap-2 md:gap-3" action="send_message.php" method="POST" id="messageForm">
                             <button type="button" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0">
@@ -402,7 +281,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     </div>
                 </div>
             <?php else: ?>
-                <!-- Empty State -->
                 <div class="glass-panel rounded-2xl md:rounded-3xl flex-1 flex items-center justify-center shadow-2xl empty-state">
                     <div class="text-center px-6">
                         <div class="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
@@ -428,7 +306,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         </div>
     </div>
 
-    <!-- Hidden form for CSRF token -->
     <form id="logoutForm" action="logout" method="POST" class="hidden">
         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
     </form>
@@ -439,26 +316,34 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         const userId = <?= (int)$_SESSION['user']['id'] ?>;
         const receiverInitials = '<?= $receiverInitials ?>';
         let messagesLoaded = false;
+        
+        // Cache variables to prevent flickering
+        let lastMessagesData = ''; 
+        let isUserScrolling = false;
+
+        // Monitor scroll event to check if user is reading old messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) {
+                messagesContainer.addEventListener('scroll', function() {
+                    const distanceFromBottom = this.scrollHeight - this.scrollTop - this.clientHeight;
+                    isUserScrolling = distanceFromBottom > 50;
+                });
+            }
+        });
 
         // ============ Message Menu Functions ============
         function toggleMessageMenu(event, messageId) {
             event.stopPropagation();
-
-            // Close all other dropdowns
             document.querySelectorAll('.message-dropdown').forEach(dropdown => {
                 if (dropdown.id !== `messageMenu-${messageId}`) {
                     dropdown.classList.add('hidden');
                 }
             });
-
-            // Toggle current dropdown
             const dropdown = document.getElementById(`messageMenu-${messageId}`);
-            if (dropdown) {
-                dropdown.classList.toggle('hidden');
-            }
+            if (dropdown) dropdown.classList.toggle('hidden');
         }
 
-        // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
             if (!event.target.closest('.message-menu-btn') && !event.target.closest('.message-dropdown')) {
                 document.querySelectorAll('.message-dropdown').forEach(dropdown => {
@@ -485,7 +370,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             if (messageGroup) {
                 const messageText = messageGroup.querySelector('.message-sent p, .message-received p').textContent;
                 navigator.clipboard.writeText(messageText).then(() => {
-                    // Show brief success notification
                     showNotification('Xabar nusxalandi!', 'success');
                 }).catch(() => {
                     showNotification('Nusxalashda xatolik!', 'error');
@@ -495,15 +379,11 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
         function deleteMessage(messageId) {
             document.getElementById(`messageMenu-${messageId}`).classList.add('hidden');
-
             if (confirm('Xabarni o\'chirishni istaysizmi?')) {
                 const formData = new FormData();
                 formData.append('message_id', messageId);
 
-                fetch('delete_message.php', {
-                        method: 'POST',
-                        body: formData
-                    })
+                fetch('delete_message.php', { method: 'POST', body: formData })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -512,15 +392,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                 messageGroup.style.transition = 'all 0.3s ease';
                                 messageGroup.style.opacity = '0';
                                 messageGroup.style.transform = 'scale(0.8)';
-                                setTimeout(() => {
-                                    messageGroup.remove();
-                                }, 300);
+                                setTimeout(() => messageGroup.remove(), 300);
                             }
                             showNotification('Xabar o\'chirildi!', 'success');
                         } else {
                             showNotification(data.message || 'Xatolik yuz berdi.', 'error');
                         }
-                    })
+                    });
             }
         }
 
@@ -530,19 +408,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             formData.append('message', newMessage);
 
             try {
-                const response = await fetch('update_message.php', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch('update_message.php', { method: 'POST', body: formData });
                 const data = await response.json();
-                
                 if (data.success) {
                     const messageGroup = document.querySelector(`.message-group[data-message-id="${messageId}"]`);
                     if (messageGroup) {
                         const messageP = messageGroup.querySelector('.message-sent p, .message-received p');
-                        if (messageP) {
-                            messageP.textContent = newMessage;
-                        }
+                        if (messageP) messageP.textContent = newMessage;
                     }
                     showNotification('Xabar yangilandi!', 'success');
                 } else {
@@ -555,12 +427,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
         }
 
         function showNotification(message, type = 'info') {
-            const colors = {
-                success: 'bg-green-500',
-                error: 'bg-red-500',
-                info: 'bg-blue-500'
-            };
-
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
             const notification = document.createElement('div');
             notification.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg z-50 transition-all`;
             notification.style.animation = 'fadeIn 0.3s ease-out';
@@ -571,17 +438,14 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 notification.style.opacity = '0';
                 notification.style.transform = 'translate(-50%, 20px)';
                 notification.style.transition = 'all 0.3s ease';
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
+                setTimeout(() => notification.remove(), 300);
             }, 2000);
         }
 
-        // ============ Sidebar Functions ============
+        // ============ Sidebar and UI Functions ============
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
-
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
@@ -590,22 +454,17 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             window.location.href = window.location.pathname;
         }
 
-        // ============ Logout Functions ============
         function openLogoutModal() {
-            const modal = document.getElementById('logoutModal');
-            modal.classList.remove('hidden');
+            document.getElementById('logoutModal').classList.remove('hidden');
         }
 
         function closeLogoutModal() {
-            const modal = document.getElementById('logoutModal');
-            modal.classList.add('hidden');
+            document.getElementById('logoutModal').classList.add('hidden');
         }
 
         async function performLogout() {
             const logoutBtn = document.getElementById('logoutBtn');
             const originalHTML = logoutBtn.innerHTML;
-
-            // Show loading state
             logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Chiqilmoqda...</span>';
             logoutBtn.disabled = true;
 
@@ -615,11 +474,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 formData.append('csrf_token', csrfToken);
 
                 const response = await fetch('logout/index.php', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
+                    method: 'POST', body: formData, headers: { 'Accept': 'application/json' }
                 });
 
                 const contentType = response.headers.get('content-type');
@@ -663,21 +518,26 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             const messagesContainer = document.getElementById('messagesContainer');
             if (!messagesContainer) return;
 
-            messagesContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+            // Show spinner only on initial load
+            if (!messagesLoaded) {
+                messagesContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+            }
 
             const formData = new FormData();
             formData.append('id', receiverId);
 
-            fetch('get_messages.php', {
-                    method: 'POST',
-                    body: formData
-                })
+            fetch('get_messages.php', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
-                    messagesContainer.innerHTML = '';
+                    // Check if data changed to prevent flickering
+                    const currentMessagesData = JSON.stringify(data.data);
+                    if (lastMessagesData === currentMessagesData) return;
+                    lastMessagesData = currentMessagesData;
+
+                    let newHTML = '';
 
                     if (!data.data || data.data.length === 0) {
-                        messagesContainer.innerHTML = `
+                        newHTML = `
                             <div class="flex items-center justify-center h-full">
                                 <div class="text-center text-gray-500">
                                     <i class="fas fa-comments text-4xl mb-3"></i>
@@ -685,121 +545,103 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                                     <p class="text-sm">Birinchi xabarni yuboring!</p>
                                 </div>
                             </div>`;
-                        return;
+                    } else {
+                        data.data.forEach(message => {
+                            const time = formatTime(message.created_at);
+                            // Determine status icon (sent = gray single tick, read = blue double tick)
+                            const statusIcon = message.status === 'read' 
+                                ? '<i class="fas fa-check-double text-blue-400 text-[10px]"></i>' 
+                                : '<i class="fas fa-check text-gray-400 text-[10px]"></i>';
+
+                            if (userId === message.sender_id) {
+                                // Sent message
+                                newHTML += `
+                                <div class="flex items-start gap-2 md:gap-3 justify-end message-group group" data-message-id="${message.id}">
+                                    <div class="max-w-[75%] md:max-w-md relative">
+                                        <button onclick="toggleMessageMenu(event, ${message.id})" 
+                                                class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="editMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-edit text-blue-400"></i><span>Tahrirlash</span>
+                                            </button>
+                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i><span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i><span>O'chirish</span>
+                                            </button>
+                                        </div>
+                                        <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm">${escapeHtml(message.message)}</p>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
+                                            ${time} ${statusIcon}
+                                        </p>
+                                    </div>
+                                </div>`;
+                            } else {
+                                // Received message
+                                newHTML += `
+                                <div class="flex items-start gap-2 md:gap-3 message-group group" data-message-id="${message.id}">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs font-bold text-white">${receiverInitials}</span>
+                                    </div>
+                                    <div class="max-w-[75%] md:max-w-md relative">
+                                        <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
+                                            <p class="text-sm">${escapeHtml(message.message)}</p>
+                                        </div>
+                                        <button onclick="toggleMessageMenu(event, ${message.id})" class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
+                                            <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
+                                        </button>
+                                        <div id="messageMenu-${message.id}" class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
+                                            <button onclick="copyMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                                                <i class="fas fa-copy text-green-400"></i><span>Nusxalash</span>
+                                            </button>
+                                            <button onclick="deleteMessage(${message.id})" class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
+                                                <i class="fas fa-trash-alt"></i><span>O'chirish</span>
+                                            </button>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 mt-1 ml-1">${time}</p>
+                                    </div>
+                                </div>`;
+                            }
+                        });
                     }
 
-                    data.data.forEach(message => {
-                        const time = formatTime(message.created_at);
+                    messagesContainer.innerHTML = newHTML;
 
-                        if (userId === message.sender_id) {
-                            // Sent message
-                            messagesContainer.innerHTML += `
-                            <div class="flex items-start gap-2 md:gap-3 justify-end message-group group" data-message-id="${message.id}">
-                                <div class="max-w-[75%] md:max-w-md relative">
-                                    <!-- Three dots button -->
-                                    <button onclick="toggleMessageMenu(event, ${message.id})" 
-                                            class="message-menu-btn absolute -left-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
-                                        <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                    </button>
-
-                                    <!-- Dropdown Menu -->
-                                    <div id="messageMenu-${message.id}" 
-                                         class="message-dropdown hidden absolute -left-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                        <button onclick="editMessage(${message.id})" 
-                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                            <i class="fas fa-edit text-blue-400"></i>
-                                            <span>Tahrirlash</span>
-                                        </button>
-                                        <button onclick="copyMessage(${message.id})" 
-                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                            <i class="fas fa-copy text-green-400"></i>
-                                            <span>Nusxalash</span>
-                                        </button>
-                                        <button onclick="deleteMessage(${message.id})" 
-                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                            <i class="fas fa-trash-alt"></i>
-                                            <span>O'chirish</span>
-                                        </button>
-                                    </div>
-
-                                    <div class="message-sent text-white rounded-2xl rounded-tr-none px-3 py-2 md:px-4 md:py-3">
-                                        <p class="text-sm">${escapeHtml(message.message)}</p>
-                                    </div>
-                                    <p class="text-[10px] text-gray-500 mt-1 mr-1 text-right flex items-center justify-end gap-1">
-                                        ${time}
-                                        <i class="fas fa-check-double text-blue-400 text-[10px]"></i>
-                                    </p>
-                                </div>
-                            </div>`;
-                        } else {
-                            // Received message
-                            messagesContainer.innerHTML += `
-                            <div class="flex items-start gap-2 md:gap-3 message-group group" data-message-id="${message.id}">
-                                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <span class="text-xs font-bold text-white">${receiverInitials}</span>
-                                </div>
-                                <div class="max-w-[75%] md:max-w-md relative">
-                                    <div class="message-received rounded-2xl rounded-tl-none px-3 py-2 md:px-4 md:py-3">
-                                        <p class="text-sm">${escapeHtml(message.message)}</p>
-                                    </div>
-
-                                    <!-- Three dots button -->
-                                    <button onclick="toggleMessageMenu(event, ${message.id})" 
-                                            class="message-menu-btn absolute -right-8 top-2 w-6 h-6 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all z-10">
-                                        <i class="fas fa-ellipsis-v text-gray-400 text-[10px]"></i>
-                                    </button>
-
-                                    <!-- Dropdown Menu -->
-                                    <div id="messageMenu-${message.id}" 
-                                         class="message-dropdown hidden absolute -right-2 top-8 w-36 bg-slate-800 rounded-xl shadow-2xl border border-gray-700/30 overflow-hidden z-50">
-                                        <button onclick="copyMessage(${message.id})" 
-                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                                            <i class="fas fa-copy text-green-400"></i>
-                                            <span>Nusxalash</span>
-                                        </button>
-                                        <button onclick="deleteMessage(${message.id})" 
-                                                class="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 flex items-center gap-2 transition-colors text-red-400">
-                                            <i class="fas fa-trash-alt"></i>
-                                            <span>O'chirish</span>
-                                        </button>
-                                    </div>
-
-                                    <p class="text-[10px] text-gray-500 mt-1 ml-1">${time}</p>
-                                </div>
-                            </div>`;
-                        }
-                    });
-
-                    // Scroll to bottom after loading messages
-                    scrollToBottom();
+                    // Scroll to bottom only if user is not actively scrolling up
+                    if (!messagesLoaded || !isUserScrolling) {
+                        scrollToBottom();
+                    }
                     messagesLoaded = true;
                 })
                 .catch(error => {
-                    console.error('Xabarlarni yuklashda xatolik:', error);
-                    messagesContainer.innerHTML = `
-                        <div class="flex items-center justify-center h-full">
-                            <div class="text-center text-red-400">
-                                <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
-                                <p>Xabarlarni yuklashda xatolik yuz berdi</p>
-                                <button onclick="loadMessages()" class="mt-3 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-colors">
-                                    <i class="fas fa-redo mr-2"></i>Qayta urinish
-                                </button>
-                            </div>
-                        </div>`;
+                    console.error('Error loading messages:', error);
+                    if (!messagesLoaded) {
+                        messagesContainer.innerHTML = `
+                            <div class="flex items-center justify-center h-full">
+                                <div class="text-center text-red-400">
+                                    <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                                    <p>Xabarlarni yuklashda xatolik yuz berdi</p>
+                                    <button onclick="loadMessages()" class="mt-3 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-colors">
+                                        <i class="fas fa-redo mr-2"></i>Qayta urinish
+                                    </button>
+                                </div>
+                            </div>`;
+                    }
                 });
         }
 
-        // ============ UI Functions ============
         function scrollToBottom() {
             const container = document.getElementById('messagesContainer');
             if (container) {
-                setTimeout(() => {
-                    container.scrollTop = container.scrollHeight;
-                }, 100);
+                setTimeout(() => container.scrollTop = container.scrollHeight, 100);
             }
         }
 
-        // Auto-resize textarea
         function setupTextarea() {
             const textarea = document.getElementById('messageInput');
             if (textarea) {
@@ -807,8 +649,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                     this.style.height = 'auto';
                     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
                 });
-
-                // Send message on Enter (Shift+Enter for new line)
                 textarea.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -818,16 +658,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
-        // Handle message form submission
         function setupMessageForm() {
             const form = document.getElementById('messageForm');
             if (form) {
                 form.addEventListener('submit', async function(e) {
                     e.preventDefault();
-
                     const messageInput = document.getElementById('messageInput');
                     const message = messageInput.value.trim();
-
                     if (!message) return;
 
                     const submitBtn = form.querySelector('button[type="submit"]');
@@ -837,16 +674,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     try {
                         const formData = new FormData(form);
-                        const response = await fetch(form.action, {
-                            method: 'POST',
-                            body: formData
-                        });
+                        const response = await fetch(form.action, { method: 'POST', body: formData });
                         const data = await response.json();
 
                         if (data.success) {
                             messageInput.value = '';
                             messageInput.style.height = 'auto';
-                            loadMessages(); // Reload messages
+                            loadMessages();
                         } else {
                             showNotification(data.message || 'Xabar yuborishda xatolik!', 'error');
                         }
@@ -861,45 +695,30 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             }
         }
 
-        // ============ Keyboard Shortcuts ============
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeLogoutModal();
-                // Close any open message dropdowns
-                document.querySelectorAll('.message-dropdown').forEach(dropdown => {
-                    dropdown.classList.add('hidden');
-                });
+                document.querySelectorAll('.message-dropdown').forEach(dropdown => dropdown.classList.add('hidden'));
             }
-
-            // Ctrl+Enter to send message
             if (e.ctrlKey && e.key === 'Enter') {
                 const messageForm = document.getElementById('messageForm');
-                if (messageForm) {
-                    messageForm.dispatchEvent(new Event('submit'));
-                }
+                if (messageForm) messageForm.dispatchEvent(new Event('submit'));
             }
         });
 
-        // ============ Initialize ============
         document.addEventListener('DOMContentLoaded', function() {
-            // Load messages if we're in a chat
             if (receiverId) {
                 loadMessages();
-                // Refresh messages every 3 seconds
                 setInterval(loadMessages, 3000);
             }
-
             setupTextarea();
             setupMessageForm();
 
-            // Add hover effect for message groups
             document.addEventListener('mouseover', function(e) {
                 const messageGroup = e.target.closest('.message-group');
                 if (messageGroup) {
                     const menuBtn = messageGroup.querySelector('.message-menu-btn');
-                    if (menuBtn) {
-                        menuBtn.style.opacity = '1';
-                    }
+                    if (menuBtn) menuBtn.style.opacity = '1';
                 }
             });
 
@@ -908,7 +727,6 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 if (messageGroup) {
                     const menuBtn = messageGroup.querySelector('.message-menu-btn');
                     const dropdown = messageGroup.querySelector('.message-dropdown');
-                    // Don't hide if dropdown is open
                     if (menuBtn && (!dropdown || dropdown.classList.contains('hidden'))) {
                         menuBtn.style.opacity = '0';
                     }
@@ -916,17 +734,12 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             });
         });
 
-        // Handle window resize for responsive sidebar
         window.addEventListener('resize', function() {
             if (window.innerWidth >= 768) {
                 const sidebar = document.getElementById('sidebar');
                 const overlay = document.getElementById('sidebarOverlay');
-                if (sidebar) {
-                    sidebar.classList.remove('active');
-                }
-                if (overlay) {
-                    overlay.classList.remove('active');
-                }
+                if (sidebar) sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
             }
         });
     </script>
