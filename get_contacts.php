@@ -22,13 +22,14 @@ $sql = "
         u.id,
         u.name,
         u.email,
+        u.avatar,
         MAX(m.created_at) as last_message_date,
         SUM(CASE WHEN m.sender_id = u.id AND m.receiver_id = ? AND m.status = 'sent' THEN 1 ELSE 0 END) as unread_count
     FROM users u
     LEFT JOIN messages m ON (u.id = m.sender_id AND m.receiver_id = ?)
                          OR (u.id = m.receiver_id AND m.sender_id = ?)
     WHERE u.id != ?
-    GROUP BY u.id, u.name, u.email
+    GROUP BY u.id, u.name, u.email, u.avatar
     ORDER BY (MAX(m.created_at) IS NULL) ASC, MAX(m.created_at) DESC
 ";
 

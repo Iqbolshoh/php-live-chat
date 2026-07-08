@@ -1,4 +1,6 @@
 uploads/images/*
 uploads/audio/*
+uploads/avatars/*
 !uploads/images/.gitkeep
 !uploads/audio/.gitkeep
+!uploads/avatars/.gitkeep

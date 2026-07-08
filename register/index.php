@@ -76,7 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user'] = [
             'id' => $userId,
             'name' => $name,
-            'email' => $email
+            'email' => $email,
+            'avatar' => null
         ];
 
         echo json_encode([

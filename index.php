@@ -19,17 +19,18 @@ $currentUserId = $_SESSION['user']['id'];
 
 // Fetch users with the latest message date and unread message count using JOIN
 $sql = "
-    SELECT 
-        u.id, 
-        u.name, 
+    SELECT
+        u.id,
+        u.name,
         u.email,
+        u.avatar,
         MAX(m.created_at) as last_message_date,
         SUM(CASE WHEN m.sender_id = u.id AND m.receiver_id = ? AND m.status = 'sent' THEN 1 ELSE 0 END) as unread_count
     FROM users u
-    LEFT JOIN messages m ON (u.id = m.sender_id AND m.receiver_id = ?) 
+    LEFT JOIN messages m ON (u.id = m.sender_id AND m.receiver_id = ?)
                          OR (u.id = m.receiver_id AND m.sender_id = ?)
     WHERE u.id != ?
-    GROUP BY u.id, u.name, u.email
+    GROUP BY u.id, u.name, u.email, u.avatar
     ORDER BY (MAX(m.created_at) IS NULL) ASC, MAX(m.created_at) DESC
 ";
 
@@ -37,15 +38,17 @@ $stmt = $db->execute($sql, [$currentUserId, $currentUserId, $currentUserId, $cur
 $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $receiverInitials = '';
+$receiverAvatar = null;
 
 // Check if a chat is selected
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $_SESSION['receiver']['id'] = $_GET['id'];
-    $_SESSION['receiver']['name'] = $db->select('users', 'name', 'id = ?', [$_GET['id']])[0]['name'];
+    $receiverRow = $db->select('users', 'name, avatar', 'id = ?', [$_GET['id']])[0];
+    $_SESSION['receiver']['name'] = $receiverRow['name'];
+    $receiverAvatar = $receiverRow['avatar'];
     $receiverNameParts = explode(' ', trim($_SESSION['receiver']['name']));
     $receiverInitials = strtoupper(substr($receiverNameParts[0], 0, 1) . (isset($receiverNameParts[1]) ? substr($receiverNameParts[1], 0, 1) : ''));
 } else {
-    $messages = [];
     $_SESSION['receiver']['id'] = null;
     $_SESSION['receiver']['name'] = null;
 }
@@ -174,6 +177,22 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                 </button>
             </div>
 
+            <div class="flex justify-center mb-6">
+                <div class="relative group/avatar cursor-pointer" onclick="document.getElementById('avatarInput').click()">
+                    <?php if (!empty($_SESSION['user']['avatar'])) : ?>
+                        <img id="myProfileAvatarPreview" src="<?= htmlspecialchars($_SESSION['user']['avatar']) ?>" alt="" class="w-24 h-24 rounded-full object-cover shadow-lg">
+                    <?php else : ?>
+                        <div id="myProfileAvatarPreview" class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                            <?= strtoupper(substr($_SESSION['user']['name'] ?? 'U', 0, 1)) ?>
+                        </div>
+                    <?php endif; ?>
+                    <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity">
+                        <i class="fas fa-camera text-white"></i>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp" class="hidden">
+                </div>
+            </div>
+
             <form id="myProfileNameForm" class="space-y-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2" for="myProfileName" data-i18n="display_name">Ism</label>
@@ -262,9 +281,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
                     <a href="?id=<?= $userId ?>" class="user-card flex items-center gap-3 p-3 rounded-xl cursor-pointer block hover:no-underline <?= $isActive ?>">
                         <div class="relative flex-shrink-0">
-                            <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                                <span class="font-bold text-white"><?= $initials ?></span>
-                            </div>
+                            <?php if (!empty($contact['avatar'])) : ?>
+                                <img src="<?= htmlspecialchars($contact['avatar']) ?>" alt="<?= $safeName ?>" class="w-12 h-12 rounded-full object-cover shadow-lg">
+                            <?php else : ?>
+                                <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                    <span class="font-bold text-white"><?= $initials ?></span>
+                                </div>
+                            <?php endif; ?>
                             <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -285,11 +308,15 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             <div class="p-3 md:p-4 border-t border-gray-700/30">
                 <div class="flex items-center gap-3">
                     <button type="button" onclick="openMyProfileModal()" class="flex items-center gap-3 flex-1 min-w-0 text-left group/profile">
-                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="font-bold text-white text-sm">
-                                <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
-                            </span>
-                        </div>
+                        <?php if (!empty($_SESSION['user']['avatar'])) : ?>
+                            <img id="myAvatarImg" src="<?= htmlspecialchars($_SESSION['user']['avatar']) ?>" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                        <?php else : ?>
+                            <div id="myAvatarImg" class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span class="font-bold text-white text-sm">
+                                    <?php echo isset($_SESSION['user']['email']) ? strtoupper(substr($_SESSION['user']['email'], 0, 2)) : 'ME'; ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-sm truncate group-hover/profile:text-blue-400 transition-colors">
                                 <?php echo isset($_SESSION['user']['email']) ? htmlspecialchars($_SESSION['user']['email']) : 'User'; ?>
@@ -317,9 +344,13 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
                             </button>
                             <button type="button" onclick="openReceiverProfileModal()" class="flex items-center gap-3 text-left hover:opacity-80 transition-opacity">
                                 <div class="relative flex-shrink-0">
-                                    <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                                        <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
-                                    </div>
+                                    <?php if (!empty($receiverAvatar)) : ?>
+                                        <img src="<?= htmlspecialchars($receiverAvatar) ?>" alt="" class="w-10 h-10 md:w-11 md:h-11 rounded-full object-cover shadow-lg">
+                                    <?php else : ?>
+                                        <div class="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                                            <span class="font-bold text-white text-sm"><?= $receiverInitials ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                     <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-800 pulse-dot"></span>
                                 </div>
                                 <div>
@@ -1785,8 +1816,14 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             const contact = contactsById.get(Number(receiverId));
             const name = contact ? contact.name : <?= json_encode($_SESSION['receiver']['name'] ?? '') ?>;
             const email = contact ? contact.email : '';
+            const avatar = contact ? contact.avatar : null;
 
-            document.getElementById('receiverProfileAvatar').textContent = receiverInitials;
+            const avatarEl = document.getElementById('receiverProfileAvatar');
+            if (avatar) {
+                avatarEl.innerHTML = `<img src="${escapeAttribute(avatar)}" alt="" class="w-full h-full rounded-full object-cover">`;
+            } else {
+                avatarEl.textContent = receiverInitials;
+            }
             document.getElementById('receiverProfileName').textContent = name;
             document.getElementById('receiverProfileEmail').textContent = email;
             document.getElementById('receiverProfileModal').classList.remove('hidden');
@@ -1794,6 +1831,59 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
 
         function closeReceiverProfileModal() {
             document.getElementById('receiverProfileModal').classList.add('hidden');
+        }
+
+        // ============ Avatar Upload ============
+        function setupAvatarUpload() {
+            const input = document.getElementById('avatarInput');
+            if (!input) return;
+
+            input.addEventListener('change', async function() {
+                const file = input.files[0];
+                input.value = '';
+                if (!file) return;
+
+                const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
+                if (!file.type.startsWith('image/')) {
+                    showNotification(t('image_only'), 'error');
+                    return;
+                }
+                if (file.size > MAX_AVATAR_SIZE) {
+                    showNotification(t('image_too_big'), 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('update_avatar', '1');
+                formData.append('avatar', file);
+                formData.append('csrf_token', csrfToken);
+
+                try {
+                    const response = await fetch('profile.php', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        updateOwnAvatarUI(data.avatar);
+                    } else {
+                        showNotification(data.message || t('generic_error'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Avatar upload error:', error);
+                    showNotification(t('generic_error'), 'error');
+                }
+            });
+        }
+
+        function updateOwnAvatarUI(avatarPath) {
+            const source = escapeAttribute(avatarPath);
+            const sidebarAvatar = document.getElementById('myAvatarImg');
+            if (sidebarAvatar) {
+                sidebarAvatar.outerHTML = `<img id="myAvatarImg" src="${source}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">`;
+            }
+            const modalAvatar = document.getElementById('myProfileAvatarPreview');
+            if (modalAvatar) {
+                modalAvatar.outerHTML = `<img id="myProfileAvatarPreview" src="${source}" alt="" class="w-24 h-24 rounded-full object-cover shadow-lg">`;
+            }
         }
 
         function setupMyProfileForms() {
@@ -1920,6 +2010,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
             setupContactSearch();
             setupMessageSearch();
             setupMyProfileForms();
+            setupAvatarUpload();
 
             const attachmentInput = document.getElementById('attachmentInput');
             if (attachmentInput) attachmentInput.addEventListener('change', handleAttachmentChange);
